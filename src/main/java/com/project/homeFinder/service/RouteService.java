@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.homeFinder.dto.request.TMapTransitRoutesSubRequest;
 import com.project.homeFinder.dto.response.raw.TMapTransitRoutesSubRawResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -19,6 +20,9 @@ import java.util.Map;
 public class RouteService {
 
     private final ObjectMapper mapper = new ObjectMapper();
+
+    @Value("${sk.transit.api.key}")
+    private String APP_KEY;
 
     public void calculateRouteTmapTransit(TMapTransitRoutesSubRequest request) throws IOException, InterruptedException {
         StringBuilder body = new StringBuilder();
@@ -35,7 +39,7 @@ public class RouteService {
                 .uri(URI.create("https://apis.openapi.sk.com/transit/routes/sub"))
                 .header("accept", "application/json")
                 .header("content-type", "application/json")
-                .header("appKey", "INSERT VALID APP KEY") //TODO: 키를 노출시키지 않기
+                .header("appKey", APP_KEY)
                 .method("POST", HttpRequest.BodyPublishers.ofString(body.toString()))
                 .build();
 
