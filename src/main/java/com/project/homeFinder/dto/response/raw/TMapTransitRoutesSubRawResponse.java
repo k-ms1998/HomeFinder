@@ -79,20 +79,20 @@ public class TMapTransitRoutesSubRawResponse {
             @AllArgsConstructor
             public static class Itineraries {
                 private Fare fare;
-                private Long walkDistance;
                 private Long totalTime;
-                private Long walkTime;
+                private Long totalWalkTime;
                 private Long transferCount;
                 private Long totalDistance;
+                private Long totalWalkDistance;
 
                 public static Itineraries from(Map<String, Object> attributes) {
                     return new Itineraries(
                             Fare.from((Map<String, Object>) attributes.get("fare")),
-                            Long.valueOf(String.valueOf(attributes.get("walkDistance"))),
                             Long.valueOf(String.valueOf(attributes.get("totalTime"))),
-                            Long.valueOf(String.valueOf(attributes.get("walkTime"))),
+                            Long.valueOf(String.valueOf(attributes.get("totalWalkTime"))),
                             Long.valueOf(String.valueOf(attributes.get("transferCount"))),
-                            Long.valueOf(String.valueOf(attributes.get("totalDistance")))
+                            Long.valueOf(String.valueOf(attributes.get("totalDistance"))),
+                            Long.valueOf(String.valueOf(attributes.get("totalWalkDistance")))
                     );
                 }
 
