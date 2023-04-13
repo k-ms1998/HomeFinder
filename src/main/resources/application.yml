@@ -1,1 +1,2 @@
 sk.transit.api.key: ${TRANSIT_API_KEY}
+myData.base.path.subway: src/main/resources/data/subway/
