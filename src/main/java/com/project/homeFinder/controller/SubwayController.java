@@ -1,5 +1,6 @@
 package com.project.homeFinder.controller;
 
+import com.project.homeFinder.dto.enums.Area;
 import com.project.homeFinder.service.SubwayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,8 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 
 /**
- * https://www.data.go.kr/data/15099316/fileData.do?recommendDataYn=Y -> 서울 1~8호선: 지하철역 데이터 -> filename = seoul_subway_1_8_2023_04.csv, order = 1354, area = seoul
- * https://www.data.go.kr/data/15041335/fileData.do -> 서울 9호선: 지하철역 데이터 -> filename = seoul_subway_9_2023_04.csv, order = 1234, area = seoul
+ * https://www.data.go.kr/data/15099316/fileData.do?recommendDataYn=Y -> 서울 1~8호선: 지하철역 데이터 -> filename = seoul_subway_1_8_2023_04.csv, order = 1354, area = SEOUL
+ * https://www.data.go.kr/data/15041335/fileData.do -> 서울 9호선: 지하철역 데이터 -> filename = seoul_subway_9_2023_04.csv, order = 1234, area = SEOUL
  */
 @RestController
 @RequestMapping("/subway")

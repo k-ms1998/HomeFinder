@@ -1,6 +1,7 @@
 package com.project.homeFinder.service;
 
 import com.project.homeFinder.domain.Subway;
+import com.project.homeFinder.dto.enums.Area;
 import com.project.homeFinder.repository.SubwayRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,9 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +25,16 @@ public class SubwayService {
     private final SubwayRepository subwayRepository;
 
     public Long readFileAndSave(String filename, String order, String area) {
+        if(invalidFilename(filename)){ // 파일이 '.csv' 로 끝나는지확인
+            throw new RuntimeException("File does not end with '.csv'. Please check the filename");
+        }
+        if(invalidOrder(order)){ // order 의 크기가 4이고, 중복되는 값이 없어야함
+            throw new RuntimeException("Invalid order.");
+        }
+        if(invalidArea(area)){
+            throw new RuntimeException("Invalid area.");
+        }
+
         String file = BASE_PATH + filename;
         /*
         호선, 지하철역 명, 경도, 위도 순서
@@ -32,14 +46,14 @@ public class SubwayService {
         try {
             FileReader fileReader = new FileReader(file);
             BufferedReader br = new BufferedReader(fileReader);
-            int rowNum = -1;
+            boolean skipFirst = false;
             while (true) {
                 String row = br.readLine();
                 if (row == null) {
                     break;
                 }
-                if (rowNum == -1) {
-                    ++rowNum;
+                if (!skipFirst) { // 첫번째 줄은 column 명들이므로 건너뛰기
+                    skipFirst = true;
                     continue;
                 }
                 String[] arr = row.split(",");
@@ -50,7 +64,6 @@ public class SubwayService {
                 if(save(line, name, x, y)){
                     count++;
                 }
-                System.out.println("line = " + line);
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -69,5 +82,26 @@ public class SubwayService {
         }
 
         return false;
+    }
+
+    private boolean invalidFilename(String filename) {
+        return !filename.endsWith(".csv");
+    }
+
+    private boolean invalidOrder(String order) {
+        if (order.length() != 4) {
+            return true;
+        }
+
+        Set<String> columnIdx = new HashSet<>();
+        for(int i = 0; i < 4; i++){
+            columnIdx.add(String.valueOf(order.charAt(i)));
+        }
+
+        return columnIdx.size() != 4;
+    }
+
+    private boolean invalidArea(String area) {
+        return Arrays.stream(Area.values()).noneMatch(a -> a.name().equals(area));
     }
 }
