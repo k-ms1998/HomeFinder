@@ -1,29 +1,43 @@
 package com.project.homeFinder.service;
 
 import com.project.homeFinder.domain.Subway;
+import com.project.homeFinder.domain.SubwayTravelTime;
+import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.enums.Area;
+import com.project.homeFinder.dto.request.SingleDestinationRequest;
+import com.project.homeFinder.dto.response.SingleDestinationResponse;
+import com.project.homeFinder.dto.response.SubwayTravelTimeResponse;
+import com.project.homeFinder.dto.response.TotalTimeAndTransferCount;
 import com.project.homeFinder.repository.SubwayRepository;
+import com.project.homeFinder.repository.SubwayTravelTimeRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SubwayService {
 
     @Value("${myData.base.path.subway}")
     private String BASE_PATH;
 
-    private final SubwayRepository subwayRepository;
+    private final RouteService routeService;
 
+    private final SubwayRepository subwayRepository;
+    private final SubwayTravelTimeRepository subwayTravelTimeRepository;
+
+    @Transactional
     public Long readFileAndSave(String filename, String order, String area) {
         if(invalidFilename(filename)){ // 파일이 '.csv' 로 끝나는지확인
             throw new RuntimeException("File does not end with '.csv'. Please check the filename");
@@ -57,8 +71,8 @@ public class SubwayService {
                     continue;
                 }
                 String[] arr = row.split(",");
-                String line = area + "_" + arr[Integer.parseInt(orderArr[0])]; // 서울 1호선 -> seoul_1
-                String name = arr[Integer.parseInt(orderArr[1])];
+                String line = encodeString(area + "_" + arr[Integer.parseInt(orderArr[0])]); // 서울 1호선 -> seoul_1
+                String name = encodeString(arr[Integer.parseInt(orderArr[1])]);
                 String x = arr[Integer.parseInt(orderArr[2])];
                 String y = arr[Integer.parseInt(orderArr[3])];
                 if(save(line, name, x, y)){
@@ -84,6 +98,38 @@ public class SubwayService {
         return false;
     }
 
+    @Transactional
+    public SubwayTravelTimeResponse findTimeFromSubwayToSubwayByKeyword(String keywordA, String keywordB) {
+        String encodedKeywordA = encodeString(keywordA);
+        String encodedKeywordB = encodeString(keywordB);
+
+        Subway subwayA = findSubwayByKeyword(encodedKeywordA).stream()
+                .findFirst().orElseThrow(() -> new RuntimeException("Invalid Keyword. Check First keyword."));
+
+        Subway subwayB = findSubwayByKeyword(encodedKeywordB).stream()
+                .findFirst().orElseThrow(() -> new RuntimeException("Invalid Keyword. Check Second keyword."));
+
+        SubwayTravelTime subwayTravelTime = subwayTravelTimeRepository.findBySubwayToSubway(subwayA, subwayB)
+                .orElseGet(() -> {
+                    log.info("Subway Travel Time Not Found: {} -> {}", subwayA.getName(), subwayB.getName());
+                    SingleDestinationResponse response = routeService.toSingleDestination(SingleDestinationRequest.of(
+                            Point.of(subwayA.getX(), subwayA.getY()),
+                            Point.of(subwayB.getX(), subwayB.getY())
+                    ));
+                    log.info("response: {}", response);
+                    TotalTimeAndTransferCount totalTimeAndTransferCount = response.getTotalTimeAndTransferCount();
+
+                    return SubwayTravelTime.of(subwayA, subwayB, totalTimeAndTransferCount.getTotalTime(), totalTimeAndTransferCount.getTransferCount());
+                });
+
+        return SubwayTravelTimeResponse.from(subwayTravelTime);
+    }
+
+    private List<Subway> findSubwayByKeyword(String keyword){
+
+        return subwayRepository.findAllByName(keyword);
+    }
+
     private boolean invalidFilename(String filename) {
         return !filename.endsWith(".csv");
     }
@@ -103,5 +149,10 @@ public class SubwayService {
 
     private boolean invalidArea(String area) {
         return Arrays.stream(Area.values()).noneMatch(a -> a.name().equals(area));
+    }
+
+    private String encodeString(String input) {
+
+        return new String(input.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
     }
 }

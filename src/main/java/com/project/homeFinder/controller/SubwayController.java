@@ -1,16 +1,14 @@
 package com.project.homeFinder.controller;
 
 import com.project.homeFinder.dto.enums.Area;
+import com.project.homeFinder.dto.response.SubwayTravelTimeResponse;
 import com.project.homeFinder.service.SubwayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 
 /**
@@ -34,6 +32,12 @@ public class SubwayController {
          */
         return ResponseEntity.status(HttpStatus.OK)
                 .body(subwayService.readFileAndSave(filename, order, area));
+    }
+
+    @GetMapping(value = "/time/keyword")
+    @Operation(summary = "Find time to travel from subway to subway")
+    public ResponseEntity<SubwayTravelTimeResponse> findTimeFromSubwayToSubwayByKeyword(@RequestParam String keywordA, @RequestParam String keywordB){
+        return ResponseEntity.ok(subwayService.findTimeFromSubwayToSubwayByKeyword(keywordA, keywordB));
     }
 
 }
