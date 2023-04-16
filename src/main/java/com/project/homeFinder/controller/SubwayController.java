@@ -1,6 +1,7 @@
 package com.project.homeFinder.controller;
 
-import com.project.homeFinder.dto.enums.Area;
+import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
+import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse;
 import com.project.homeFinder.dto.response.SubwayTravelTimeResponse;
 import com.project.homeFinder.service.SubwayService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 /**
@@ -39,5 +42,18 @@ public class SubwayController {
     public ResponseEntity<SubwayTravelTimeResponse> findTimeFromSubwayToSubwayByKeyword(@RequestParam String keywordA, @RequestParam String keywordB){
         return ResponseEntity.ok(subwayService.findTimeFromSubwayToSubwayByKeyword(keywordA, keywordB));
     }
+
+    @GetMapping(value = "/by/time")
+    @Operation(summary = "All subway stations within given time")
+    public ResponseEntity<List<SubwayTravelTimeResponse>> findSubwaysByTime(@RequestParam String name, @RequestParam String time) {
+        return ResponseEntity.ok(subwayService.findSubwaysByTime(name, time));
+    }
+
+    @PostMapping(value = "/by/time/multiple")
+    @Operation(summary = "All subway stations within given time")
+    public ResponseEntity<SubwayTravelTimeMultipleResponse> findSubwaysByTimeMultiple(@RequestBody List<SubwayTravelTimeRequest> requests) {
+        return ResponseEntity.ok(subwayService.findSubwaysByTimeMultiple(requests));
+    }
+
 
 }

@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,4 +26,13 @@ public class SubwayTravelTimeRepositoryCustomImpl implements SubwayTravelTimeRep
                 .orElse(null));
 
     }
+
+    @Override
+    public List<SubwayTravelTime> findByTimeFromSubway(Subway subway, Long time) {
+        return em.createQuery("SELECT s FROM SubwayTravelTime s WHERE (s.subA=:subway OR s.subB=:subway) AND s.totalTime<=:time", SubwayTravelTime.class)
+                .setParameter("subway", subway)
+                .setParameter("time", time)
+                .getResultList();
+    }
+
 }
