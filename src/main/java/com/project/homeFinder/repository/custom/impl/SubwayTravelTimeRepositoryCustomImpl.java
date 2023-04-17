@@ -19,7 +19,7 @@ public class SubwayTravelTimeRepositoryCustomImpl implements SubwayTravelTimeRep
     @Override
     public Optional<SubwayTravelTime> findBySubwayToSubway(Subway subwayA, Subway subwayB) {
         // WHERE (subA = subwayA AND subB = subwayB_ OR (subA = subwayB AND subB = subwayA)
-        return Optional.ofNullable(em.createQuery("SELECT s FROM SubwayTravelTime s WHERE s.subA=:subwayA AND s.subB=:subwayB", SubwayTravelTime.class)
+        return Optional.ofNullable(em.createQuery("SELECT s FROM SubwayTravelTime s WHERE (s.subA=:subwayA AND s.subB=:subwayB) OR (s.subA=:subwayB AND s.subB=:subwayA)", SubwayTravelTime.class)
                 .setParameter("subwayA", subwayA)
                 .setParameter("subwayB", subwayB)
                 .getResultStream().findFirst()
