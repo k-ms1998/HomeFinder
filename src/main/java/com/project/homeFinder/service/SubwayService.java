@@ -5,11 +5,16 @@ import com.project.homeFinder.domain.SubwayTravelTime;
 import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.enums.Area;
 import com.project.homeFinder.dto.request.SingleDestinationRequest;
+import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
 import com.project.homeFinder.dto.response.SingleDestinationResponse;
+import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse;
+import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.TravelInfo;
+import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.TravelInfo.StartInfo;
 import com.project.homeFinder.dto.response.SubwayTravelTimeResponse;
 import com.project.homeFinder.dto.response.TotalTimeAndTransferCount;
 import com.project.homeFinder.repository.SubwayRepository;
 import com.project.homeFinder.repository.SubwayTravelTimeRepository;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +27,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -122,12 +129,99 @@ public class SubwayService {
                     return SubwayTravelTime.of(subwayA, subwayB, totalTimeAndTransferCount.getTotalTime(), totalTimeAndTransferCount.getTransferCount());
                 });
 
+        subwayTravelTimeRepository.save(subwayTravelTime);
         return SubwayTravelTimeResponse.from(subwayTravelTime);
+    }
+
+    public List<SubwayTravelTimeResponse> findSubwaysByTime(String name, String time) {
+        List<Subway> subways = findSubwayByKeyword(encodeString(name));
+        if(isResultListEmpty(subways)){
+            return null;
+        }
+
+        Subway subway = subways.get(0);
+        return subwayTravelTimeRepository.findByTimeFromSubway(subway, Long.valueOf(time)).stream()
+                .map(SubwayTravelTimeResponse::from)
+                .collect(Collectors.toList());
+
+    }
+
+    // 각 출발지점으로 부터, 주어진 시간이내의 모든 지하철역들 찾기
+    public SubwayTravelTimeMultipleResponse findSubwaysByTimeMultiple(List<SubwayTravelTimeRequest> requests) {
+        final int targetSize = requests.size();
+
+        Set<String> targets = new HashSet<>();
+        List<SubwayTravelTimeResponse> tmpValue = new ArrayList<>();
+        for (SubwayTravelTimeRequest request : requests) {
+            String start = encodeString(request.getName());
+            Long time = request.getTime();
+            targets.add(start);
+
+            List<Subway> subways = findSubwayByKeyword(encodeString(start));
+            if(isResultListEmpty(subways)){
+                log.info("Subway {} does not exist.", start);
+                continue;
+            }
+            
+            Subway subway = subways.get(0);
+            List<SubwayTravelTimeResponse> byTimeFromSubway = subwayTravelTimeRepository.findByTimeFromSubway(subway, Long.valueOf(time)).stream()
+                    .map(SubwayTravelTimeResponse::from)
+                    .collect(Collectors.toList());// request에서 time내에 있는 모든 지하철역들
+            tmpValue.addAll(byTimeFromSubway);
+        }
+
+        Map<String, Set<String>> tmpAddedSet = new HashMap<>();
+        Map<String, List<SubwayTravelTimeResponse>> tmpValueMap = new HashMap<>();
+        for (SubwayTravelTimeResponse stt : tmpValue) {
+            String start = stt.getStart();
+            String destination = stt.getDestination();
+
+            List<SubwayTravelTimeResponse> sttStart = tmpValueMap.getOrDefault(start, new ArrayList<>());
+            List<SubwayTravelTimeResponse> sttDestination = tmpValueMap.getOrDefault(destination, new ArrayList<>());
+            if(targets.contains(start)){
+                Set<String> addedSet = tmpAddedSet.getOrDefault(destination, new HashSet<>());
+                if(!addedSet.contains(start)){
+                    sttDestination.add(stt);
+                    tmpValueMap.put(destination, sttDestination);
+                    addedSet.add(start);
+                    tmpAddedSet.put(destination, addedSet);
+                }
+            }
+            if(targets.contains(destination)){
+                Set<String> addedSet = tmpAddedSet.getOrDefault(start, new HashSet<>());
+                if(!addedSet.contains(destination)){
+                    sttStart.add(stt);
+                    tmpValueMap.put(start, sttStart);
+                    addedSet.add(destination);
+                    tmpAddedSet.put(start, addedSet);
+                }
+            }
+        }
+//        for (String s : tmpValueMap.keySet()) {
+//            log.info("destination: {}, tmpValueMap: {}", encodeString(s), tmpValueMap.get(s));
+//        }
+
+        List<TravelInfo> result = tmpValueMap.keySet().stream()
+                .filter(k -> targets.contains(k) ? (tmpValueMap.get(k).size() >= targetSize - 1) : (tmpValueMap.get(k).size() >= targetSize))
+                .map(k -> {
+                    List<SubwayTravelTimeResponse> subwayTravelTimeResponses = tmpValueMap.get(k);
+                    return TravelInfo.of(k, subwayTravelTimeResponses.stream()
+                            .map(stt -> StartInfo.of(stt.getStart() == k ? stt.getDestination() : stt.getStart(),
+                                    TotalTimeAndTransferCount.of(stt.getTotalTime(), stt.getTransferCount())))
+                            .collect(Collectors.toList()));
+                }).collect(Collectors.toList());
+
+
+        return SubwayTravelTimeMultipleResponse.of(Long.valueOf(result.size()), result);
     }
 
     private List<Subway> findSubwayByKeyword(String keyword){
 
         return subwayRepository.findAllByName(keyword);
+    }
+
+    private boolean isResultListEmpty(List<?> result) {
+        return result.size() == 0;
     }
 
     private boolean invalidFilename(String filename) {
