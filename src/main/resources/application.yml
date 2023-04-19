@@ -1,5 +1,6 @@
 sk.transit.api.key: ${TRANSIT_API_KEY}
 myData.base.path.subway: src/main/resources/data/subway/
+kakao.api.key: 8eb78a8cd2afa961eb6756d18b4f3d13
 
 spring:
   jpa:
