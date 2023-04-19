@@ -1,5 +1,6 @@
 package com.project.homeFinder.controller;
 
+import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
 import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse;
 import com.project.homeFinder.dto.response.SubwayTravelTimeResponse;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 
@@ -53,6 +55,12 @@ public class SubwayController {
     @Operation(summary = "All subway stations within given time")
     public ResponseEntity<SubwayTravelTimeMultipleResponse> findSubwaysByTimeMultiple(@RequestBody List<SubwayTravelTimeRequest> requests) {
         return ResponseEntity.ok(subwayService.findSubwaysByTimeMultiple(requests));
+    }
+
+    @PostMapping(value = "/nearset/to")
+    @Operation(summary = "Find the nearest subway station when given co-ordinates")
+    public void findToNearestSubway(@RequestBody Point request){
+        subwayService.findToNearestSubway(request);
     }
 
 

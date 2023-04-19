@@ -6,20 +6,19 @@ import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.enums.Area;
 import com.project.homeFinder.dto.request.SingleDestinationRequest;
 import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
-import com.project.homeFinder.dto.response.SingleDestinationResponse;
-import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse;
+import com.project.homeFinder.dto.response.*;
 import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.TravelInfo;
 import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.TravelInfo.StartInfo;
-import com.project.homeFinder.dto.response.SubwayTravelTimeResponse;
-import com.project.homeFinder.dto.response.TotalTimeAndTransferCount;
+import com.project.homeFinder.dto.response.raw.KakaoSearchByCategoryResponseRaw;
 import com.project.homeFinder.repository.SubwayRepository;
 import com.project.homeFinder.repository.SubwayTravelTimeRepository;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -27,7 +26,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,10 +37,15 @@ public class SubwayService {
     @Value("${myData.base.path.subway}")
     private String BASE_PATH;
 
+    @Value("${kakao.api.key}")
+    private String KAKAO_API_KEY;
+
     private final RouteService routeService;
 
     private final SubwayRepository subwayRepository;
     private final SubwayTravelTimeRepository subwayTravelTimeRepository;
+
+    private final WebClient webClient;
 
     @Transactional
     public Long readFileAndSave(String filename, String order, String area) {
@@ -213,6 +216,27 @@ public class SubwayService {
 
 
         return SubwayTravelTimeMultipleResponse.of(Long.valueOf(result.size()), result);
+    }
+
+    public void findToNearestSubway(Point request) {
+        final String uri =
+                String.format("https://dapi.kakao.com/v2/local/search/category.json?category_group_code=SW8&page=1&size=5&sort=distance&x=%s&y=%s&radius=1000", request.getX(), request.getY());
+
+        log.info("FindToNearestSubway.KAKAO_API_KEY: {}", KAKAO_API_KEY);
+        log.info("FindToNearestSubway.URI: {}", uri);
+        List<KakaoSearchByCategoryResponse> response = webClient.get()
+                .uri(uri)
+                .header("Authorization", "KakaoAK " + KAKAO_API_KEY)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToFlux(KakaoSearchByCategoryResponseRaw.class)
+                .map(res -> res.getDocuments())
+                .map(KakaoSearchByCategoryResponse::fromDocumentList)
+                .single().blockOptional()
+                .orElseThrow(() -> new RuntimeException("No Results."));
+
+        log.info("KakaoSearchByCategoryResponseRaw: {}", response);
+
     }
 
     private List<Subway> findSubwayByKeyword(String keyword){
