@@ -2,6 +2,7 @@ package com.project.homeFinder.controller;
 
 import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
+import com.project.homeFinder.dto.response.KakaoSearchByCategoryResponse;
 import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse;
 import com.project.homeFinder.dto.response.SubwayTravelTimeResponse;
 import com.project.homeFinder.service.SubwayService;
@@ -57,10 +58,10 @@ public class SubwayController {
         return ResponseEntity.ok(subwayService.findSubwaysByTimeMultiple(requests));
     }
 
-    @PostMapping(value = "/nearset/to")
+    @PostMapping(value = "/nearest/to")
     @Operation(summary = "Find the nearest subway station when given co-ordinates")
-    public void findToNearestSubway(@RequestBody Point request){
-        subwayService.findToNearestSubway(request);
+    public ResponseEntity<List<KakaoSearchByCategoryResponse>> findToNearestSubway(@RequestBody Point request) {
+        return ResponseEntity.ok(subwayService.findToNearestSubway(request));
     }
 
 
