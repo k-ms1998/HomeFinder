@@ -40,6 +40,8 @@ public class SubwayService {
     @Value("${kakao.api.key}")
     private String KAKAO_API_KEY;
 
+    private static final int MAX_DISTANCE = 1000;
+
     private final RouteService routeService;
 
     private final SubwayRepository subwayRepository;
@@ -218,13 +220,11 @@ public class SubwayService {
         return SubwayTravelTimeMultipleResponse.of(Long.valueOf(result.size()), result);
     }
 
-    public void findToNearestSubway(Point request) {
+    public List<KakaoSearchByCategoryResponse> findToNearestSubway(Point request) {
         final String uri =
                 String.format("https://dapi.kakao.com/v2/local/search/category.json?category_group_code=SW8&page=1&size=5&sort=distance&x=%s&y=%s&radius=1000", request.getX(), request.getY());
 
-        log.info("FindToNearestSubway.KAKAO_API_KEY: {}", KAKAO_API_KEY);
-        log.info("FindToNearestSubway.URI: {}", uri);
-        List<KakaoSearchByCategoryResponse> response = webClient.get()
+        List<KakaoSearchByCategoryResponse> responseRaw = webClient.get()
                 .uri(uri)
                 .header("Authorization", "KakaoAK " + KAKAO_API_KEY)
                 .accept(MediaType.APPLICATION_JSON)
@@ -235,8 +235,18 @@ public class SubwayService {
                 .single().blockOptional()
                 .orElseThrow(() -> new RuntimeException("No Results."));
 
-        log.info("KakaoSearchByCategoryResponseRaw: {}", response);
+        log.info("KakaoSearchByCategoryResponseRaw: {}", responseRaw);
 
+        List<KakaoSearchByCategoryResponse> response = new ArrayList<>();
+        Set<String> subwayNamesSet = new HashSet<>();
+        for (KakaoSearchByCategoryResponse res : responseRaw) {
+            String name = res.getName();
+            if(!subwayNamesSet.contains(name)){
+                response.add(res);
+            }
+        }
+
+        return response;
     }
 
     private List<Subway> findSubwayByKeyword(String keyword){
