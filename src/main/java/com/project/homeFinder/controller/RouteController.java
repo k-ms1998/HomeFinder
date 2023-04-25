@@ -1,10 +1,9 @@
 package com.project.homeFinder.controller;
 
-import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.request.MultipleDestinationsRequest;
 import com.project.homeFinder.dto.request.PointTravelTimeRequest;
-import com.project.homeFinder.dto.response.KakaoSearchByCategoryResponse;
 import com.project.homeFinder.dto.response.MultipleDestinationResponse;
+import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse;
 import com.project.homeFinder.service.RouteService;
 import com.project.homeFinder.service.SubwayService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -54,27 +52,22 @@ public class RouteController {
      */
     @PostMapping("/multiple_points_time")
     @Operation(summary = "Fetch Transit Route from Multiple Point and time")
-    public void fetchTransitTimeFromMultiplePointsAndTime(@RequestBody List<PointTravelTimeRequest> request){
+    public ResponseEntity<List<SubwayTravelTimeMultipleResponse>> fetchTransitTimeFromMultiplePointsAndTime(@RequestBody List<PointTravelTimeRequest> request){
         /*
         // GS타워, 롯데타워
         [
           {
             "x": "127.0376",
             "y": "37.5024",
-            "time": 1800000
+            "time": 2400000
           },
           {
             "x": "127.102778",
             "y": "37.5125",
-            "time": 1800000
+            "time": 2100000
           }
         ]
          */
-        // 각 지점으로부터 가장 까가운 지하철역 찾기
-        List<List<KakaoSearchByCategoryResponse>> nearestSubwaysPerRequest = request.stream()
-                .map(r -> subwayService.findToNearestSubway(Point.of(r.getX(), r.getY())))
-                .collect(Collectors.toList());
-
-        routeService.fetchTransitTimeFromMultiplePointsAndTime(nearestSubwaysPerRequest);
+        return ResponseEntity.ok(routeService.fetchTransitTimeFromMultiplePointsAndTime(request, subwayService));
     }
 }
