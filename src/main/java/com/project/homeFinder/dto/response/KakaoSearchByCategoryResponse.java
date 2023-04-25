@@ -18,12 +18,15 @@ public class KakaoSearchByCategoryResponse {
     private String y;
     private String distance;
 
+    public static KakaoSearchByCategoryResponse of(String name, String x, String y, String distance) {
+        return new KakaoSearchByCategoryResponse(name, x, y, distance);
+    }
+
     public static List<KakaoSearchByCategoryResponse> fromDocumentList(List<KakaoSearchByCategoryResponseRaw.Place> raw) {
         return raw.stream()
                 .map(KakaoSearchByCategoryResponse::fromDocument)
                 .collect(Collectors.toList());
     }
-
 
     public static KakaoSearchByCategoryResponse fromDocument(KakaoSearchByCategoryResponseRaw.Place raw) {
         return new KakaoSearchByCategoryResponse(raw.getPlace_name(), raw.getX(), raw.getY(), raw.getDistance());

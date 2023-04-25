@@ -3,14 +3,10 @@ package com.project.homeFinder.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.homeFinder.dto.Point;
-import com.project.homeFinder.dto.request.MultipleDestinationsRequest;
-import com.project.homeFinder.dto.request.SingleDestinationRequest;
-import com.project.homeFinder.dto.request.TMapTransitRoutesSubRequest;
-import com.project.homeFinder.dto.response.MultipleDestinationResponse;
-import com.project.homeFinder.dto.response.MultipleDestinationResponseBody;
-import com.project.homeFinder.dto.response.SingleDestinationResponse;
-import com.project.homeFinder.dto.response.TotalTimeAndTransferCount;
+import com.project.homeFinder.dto.request.*;
+import com.project.homeFinder.dto.response.*;
 import com.project.homeFinder.dto.response.raw.TMapTransitRoutesSubRawResponse;
+import com.project.homeFinder.util.ServiceUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -122,5 +118,58 @@ public class RouteService {
         }
 
         return SingleDestinationResponse.of(null);
+    }
+    
+    public List<SubwayTravelTimeMultipleResponse> fetchTransitTimeFromMultiplePointsAndTime(List<PointTravelTimeRequest> pointTravelTimeRequest, SubwayService subwayService) {
+        // 각 지점으로부터 가장 까가운 지하철역 찾기
+        List<List<SubwayTravelTimeRequest>> request = pointTravelTimeRequest.stream()
+                .map(r -> subwayService.findToNearestSubway(Point.of(r.getX(), r.getY())).stream()
+                        .map(ksbcr -> SubwayTravelTimeRequest.fromKakaoSearchByCategoryResponse(ksbcr, r.getTime()))
+                        .collect(Collectors.toList())
+                )
+                .collect(Collectors.toList());
+
+        //각 지점으로부터 가장 가까운 지하철역들의 모든 조합들 구하기
+        int destinationCount = request.size();
+
+        if(destinationCount >= 5){ // 너무 많은 도착지점들을 입력할 경우, 서버 과부화가 일어날 수 있기 때문에 제한
+            return null;
+        }
+        int nearestSubwayCount = destinationCount <= 2 ? 2 : 1; // 입력된 지점들에 따라서, 가까운 지하철역들의 개수 제한
+
+        List<List<SubwayTravelTimeRequest>> subwayCombinations = new ArrayList<>();
+        findSubwayCombinations(0, destinationCount, nearestSubwayCount, request, new ArrayList<>(), subwayCombinations);
+        log.info("subwayCombinations: {}", subwayCombinations);
+
+        return subwayCombinations.stream()
+                .map(sc1 -> sc1.stream()
+                        .map(sttr -> SubwayTravelTimeRequest.of(ServiceUtils.checkAndRemoveSubwayNameSuffix(sttr.getName()), sttr.getTime()))
+                        .collect(Collectors.toList())
+                )
+                .map(sc2 -> subwayService.findSubwaysByTimeMultiple(sc2))
+                .collect(Collectors.toList());
+    }
+
+    private void findSubwayCombinations(int depth, int targetDepth, int nearestSubwayCount, List<List<SubwayTravelTimeRequest>> request,
+                                        List<SubwayTravelTimeRequest> combination, List<List<SubwayTravelTimeRequest>> subwayCombinations) {
+        if(depth >= targetDepth){
+            subwayCombinations.add(combination);
+            return;
+        }
+        List<SubwayTravelTimeRequest> nearestSubways = request.get(depth);
+        int size = nearestSubways.size() < nearestSubwayCount ? nearestSubways.size() : nearestSubwayCount;
+        for(int i = 0; i < size; i++){
+            findSubwayCombinations(depth + 1, targetDepth, nearestSubwayCount, request, copyCombination(combination, nearestSubways.get(i)), subwayCombinations);
+        }
+    }
+
+    private List<SubwayTravelTimeRequest> copyCombination(List<SubwayTravelTimeRequest> combination, SubwayTravelTimeRequest next) {
+        List<SubwayTravelTimeRequest> list = new ArrayList<>();
+        for (SubwayTravelTimeRequest sttr : combination) {
+            list.add(SubwayTravelTimeRequest.of(sttr.getName(), sttr.getX(), sttr.getY(), sttr.getTime()));
+        }
+        list.add(SubwayTravelTimeRequest.of(next.getName(), next.getX(), next.getY(), next.getTime()));
+
+        return list;
     }
 }
