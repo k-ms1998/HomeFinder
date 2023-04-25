@@ -16,10 +16,10 @@ public class SubwayTravelTime {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     private Subway subA;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     private Subway subB;
 
     private Long totalTime;
