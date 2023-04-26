@@ -52,7 +52,7 @@ public class RouteController {
      */
     @PostMapping("/multiple_points_time")
     @Operation(summary = "Fetch Transit Route from Multiple Point and time")
-    public ResponseEntity<List<SubwayTravelTimeMultipleResponse>> fetchTransitTimeFromMultiplePointsAndTime(@RequestBody List<PointTravelTimeRequest> request){
+    public ResponseEntity<SubwayTravelTimeMultipleResponse> fetchTransitTimeFromMultiplePointsAndTime(@RequestBody List<PointTravelTimeRequest> request){
         /*
         // GS타워, 롯데타워
         [

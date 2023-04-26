@@ -20,6 +20,9 @@ import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.*;
+import static com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.TravelInfo.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -120,7 +123,7 @@ public class RouteService {
         return SingleDestinationResponse.of(null);
     }
     
-    public List<SubwayTravelTimeMultipleResponse> fetchTransitTimeFromMultiplePointsAndTime(List<PointTravelTimeRequest> pointTravelTimeRequest, SubwayService subwayService) {
+    public SubwayTravelTimeMultipleResponse fetchTransitTimeFromMultiplePointsAndTime(List<PointTravelTimeRequest> pointTravelTimeRequest, SubwayService subwayService) {
         // 각 지점으로부터 가장 까가운 지하철역 찾기
         List<List<SubwayTravelTimeRequest>> request = pointTravelTimeRequest.stream()
                 .map(r -> subwayService.findToNearestSubway(Point.of(r.getX(), r.getY())).stream()
@@ -141,13 +144,47 @@ public class RouteService {
         findSubwayCombinations(0, destinationCount, nearestSubwayCount, request, new ArrayList<>(), subwayCombinations);
         log.info("subwayCombinations: {}", subwayCombinations);
 
-        return subwayCombinations.stream()
+        List<SubwayTravelTimeMultipleResponse> result = subwayCombinations.stream()
                 .map(sc1 -> sc1.stream()
                         .map(sttr -> SubwayTravelTimeRequest.of(ServiceUtils.checkAndRemoveSubwayNameSuffix(sttr.getName()), sttr.getTime()))
                         .collect(Collectors.toList())
                 )
                 .map(sc2 -> subwayService.findSubwaysByTimeMultiple(sc2))
                 .collect(Collectors.toList());
+
+        Map<String, Set<String>> sttmrSet = new HashMap<>();
+        Map<String, List<StartInfo>> sttmrMap = new HashMap<>();
+        for (SubwayTravelTimeMultipleResponse subwayTravelTimeMultipleResponse : result) {
+            subwayTravelTimeMultipleResponse.getTravelInfos().forEach(sttmr -> {
+                String destination = sttmr.getDestination();
+                List<StartInfo> startInfos = sttmr.getStartInfos();
+                List<StartInfo> value = sttmrMap.getOrDefault(destination, new ArrayList<>());
+                Set<String> added = sttmrSet.getOrDefault(destination, new HashSet<>());
+
+                // 중복되는 StartInfo 들 제거
+                value.addAll(startInfos.stream()
+                        .filter(s -> {
+                            String name = s.getName();
+                            if(!added.contains(name)){
+                                added.add(name);
+                                return true;
+                            }
+
+                            return false;
+                        })
+                        .collect(Collectors.toList())
+                );
+                sttmrMap.put(destination, value);
+                sttmrSet.put(destination, added);
+            });
+        }
+
+        List<TravelInfo> travelInfo = sttmrMap.keySet().stream()
+                .map(k -> new TravelInfo(k, sttmrMap.get(k)))
+                .collect(Collectors.toList());
+
+
+        return SubwayTravelTimeMultipleResponse.of(Long.valueOf(travelInfo.size()), travelInfo);
     }
 
     private void findSubwayCombinations(int depth, int targetDepth, int nearestSubwayCount, List<List<SubwayTravelTimeRequest>> request,
