@@ -12,6 +12,7 @@ import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.Trav
 import com.project.homeFinder.dto.response.raw.KakaoSearchByCategoryResponseRaw;
 import com.project.homeFinder.repository.SubwayRepository;
 import com.project.homeFinder.repository.SubwayTravelTimeRepository;
+import com.project.homeFinder.util.ServiceUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +25,6 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -83,8 +83,8 @@ public class SubwayService {
                     continue;
                 }
                 String[] arr = row.split(",");
-                String line = encodeString(area + "_" + arr[Integer.parseInt(orderArr[0])]); // 서울 1호선 -> seoul_1
-                String name = encodeString(arr[Integer.parseInt(orderArr[1])]);
+                String line = ServiceUtils.encodeString(area + "_" + arr[Integer.parseInt(orderArr[0])]); // 서울 1호선 -> seoul_1
+                String name = ServiceUtils.encodeString(arr[Integer.parseInt(orderArr[1])]);
                 String x = arr[Integer.parseInt(orderArr[2])];
                 String y = arr[Integer.parseInt(orderArr[3])];
                 if(save(line, name, x, y)){
@@ -112,8 +112,8 @@ public class SubwayService {
 
     @Transactional
     public SubwayTravelTimeResponse findTimeFromSubwayToSubwayByKeyword(String keywordA, String keywordB) {
-        String encodedKeywordA = encodeString(keywordA);
-        String encodedKeywordB = encodeString(keywordB);
+        String encodedKeywordA = ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(keywordA);
+        String encodedKeywordB = ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(keywordB);
 
         Subway subwayA = findSubwayByKeyword(encodedKeywordA).stream()
                 .findFirst().orElseThrow(() -> new RuntimeException("Invalid Keyword. Check First keyword."));
@@ -139,7 +139,7 @@ public class SubwayService {
     }
 
     public List<SubwayTravelTimeResponse> findSubwaysByTime(String name, String time) {
-        List<Subway> subways = findSubwayByKeyword(encodeString(name));
+        List<Subway> subways = findSubwayByKeyword(ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(name));
         if(isResultListEmpty(subways)){
             return null;
         }
@@ -158,11 +158,11 @@ public class SubwayService {
         Set<String> targets = new HashSet<>();
         List<SubwayTravelTimeResponse> tmpValue = new ArrayList<>();
         for (SubwayTravelTimeRequest request : requests) {
-            String start = encodeString(request.getName());
+            String start = ServiceUtils.encodeString(request.getName());
             Long time = request.getTime();
             targets.add(start);
 
-            List<Subway> subways = findSubwayByKeyword(encodeString(start));
+            List<Subway> subways = findSubwayByKeyword(ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(start));
             if(isResultListEmpty(subways)){
                 log.info("Subway {} does not exist.", start);
                 continue;
@@ -216,7 +216,6 @@ public class SubwayService {
                             .collect(Collectors.toList()));
                 }).collect(Collectors.toList());
 
-
         return SubwayTravelTimeMultipleResponse.of(Long.valueOf(result.size()), result);
     }
 
@@ -235,14 +234,14 @@ public class SubwayService {
                 .single().blockOptional()
                 .orElseThrow(() -> new RuntimeException("No Results."));
 
-        log.info("KakaoSearchByCategoryResponseRaw: {}", responseRaw);
-
         List<KakaoSearchByCategoryResponse> response = new ArrayList<>();
         Set<String> subwayNamesSet = new HashSet<>();
         for (KakaoSearchByCategoryResponse res : responseRaw) {
-            String name = res.getName();
+            // 지하철역 이름이 'OO역 O호선' 으로 반횐됨 -> 0호선 부분은 버리고 OO역만 확인
+            String name = res.getName().split(" ")[0];
             if(!subwayNamesSet.contains(name)){
-                response.add(res);
+                response.add(KakaoSearchByCategoryResponse.of(name, res.getX(), res.getY(), res.getDistance())); // 0호선 바린 값으로 반환
+                subwayNamesSet.add(name);
             }
         }
 
@@ -279,8 +278,4 @@ public class SubwayService {
         return Arrays.stream(Area.values()).noneMatch(a -> a.name().equals(area));
     }
 
-    private String encodeString(String input) {
-
-        return new String(input.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
-    }
 }
