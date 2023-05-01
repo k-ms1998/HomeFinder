@@ -12,6 +12,7 @@ public class ServiceUtils {
     }
 
     public static String checkAndRemoveSubwayNameSuffix(String input) {
+        input = input.split(" ")[0];
         input = ServiceUtils.encodeString(input);
         if(input.endsWith("역")){
             String suffix = ServiceUtils.encodeString("역");

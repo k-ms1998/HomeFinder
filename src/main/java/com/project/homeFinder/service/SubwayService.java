@@ -1,32 +1,23 @@
 package com.project.homeFinder.service;
 
 import com.project.homeFinder.domain.Subway;
-import com.project.homeFinder.domain.SubwayTravelTime;
 import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.enums.Area;
-import com.project.homeFinder.dto.request.SingleDestinationRequest;
-import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
 import com.project.homeFinder.dto.response.*;
-import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.TravelInfo;
-import com.project.homeFinder.dto.response.SubwayTravelTimeMultipleResponse.TravelInfo.StartInfo;
-import com.project.homeFinder.dto.response.raw.KakaoSearchByCategoryResponseRaw;
 import com.project.homeFinder.repository.SubwayRepository;
-import com.project.homeFinder.repository.SubwayTravelTimeRepository;
+import com.project.homeFinder.service.api.KakaoApi;
 import com.project.homeFinder.util.ServiceUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -37,17 +28,9 @@ public class SubwayService {
     @Value("${myData.base.path.subway}")
     private String BASE_PATH;
 
-    @Value("${kakao.api.key}")
-    private String KAKAO_API_KEY;
-
-    private static final int MAX_DISTANCE = 1000;
-
-    private final RouteService routeService;
+    private final KakaoApi kakaoApi;
 
     private final SubwayRepository subwayRepository;
-    private final SubwayTravelTimeRepository subwayTravelTimeRepository;
-
-    private final WebClient webClient;
 
     @Transactional
     public Long readFileAndSave(String filename, String order, String area) {
@@ -110,129 +93,8 @@ public class SubwayService {
         return false;
     }
 
-    @Transactional
-    public SubwayTravelTimeResponse findTimeFromSubwayToSubwayByKeyword(String keywordA, String keywordB) {
-        String encodedKeywordA = ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(keywordA);
-        String encodedKeywordB = ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(keywordB);
-
-        Subway subwayA = findSubwayByKeyword(encodedKeywordA).stream()
-                .findFirst().orElseThrow(() -> new RuntimeException("Invalid Keyword. Check First keyword."));
-
-        Subway subwayB = findSubwayByKeyword(encodedKeywordB).stream()
-                .findFirst().orElseThrow(() -> new RuntimeException("Invalid Keyword. Check Second keyword."));
-
-        SubwayTravelTime subwayTravelTime = subwayTravelTimeRepository.findBySubwayToSubway(subwayA, subwayB)
-                .orElseGet(() -> {
-                    log.info("Subway Travel Time Not Found: {} -> {}", subwayA.getName(), subwayB.getName());
-                    SingleDestinationResponse response = routeService.toSingleDestination(SingleDestinationRequest.of(
-                            Point.of(subwayA.getX(), subwayA.getY()),
-                            Point.of(subwayB.getX(), subwayB.getY())
-                    ));
-                    log.info("response: {}", response);
-                    TotalTimeAndTransferCount totalTimeAndTransferCount = response.getTotalTimeAndTransferCount();
-
-                    return SubwayTravelTime.of(subwayA, subwayB, totalTimeAndTransferCount.getTotalTime(), totalTimeAndTransferCount.getTransferCount());
-                });
-
-        subwayTravelTimeRepository.save(subwayTravelTime);
-        return SubwayTravelTimeResponse.from(subwayTravelTime);
-    }
-
-    public List<SubwayTravelTimeResponse> findSubwaysByTime(String name, String time) {
-        List<Subway> subways = findSubwayByKeyword(ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(name));
-        if(isResultListEmpty(subways)){
-            return null;
-        }
-
-        Subway subway = subways.get(0);
-        return subwayTravelTimeRepository.findByTimeFromSubway(subway, Long.valueOf(time)).stream()
-                .map(SubwayTravelTimeResponse::from)
-                .collect(Collectors.toList());
-
-    }
-
-    // 각 출발지점으로 부터, 주어진 시간이내의 모든 지하철역들 찾기
-    public SubwayTravelTimeMultipleResponse findSubwaysByTimeMultiple(List<SubwayTravelTimeRequest> requests) {
-        final int targetSize = requests.size();
-
-        Set<String> targets = new HashSet<>();
-        List<SubwayTravelTimeResponse> tmpValue = new ArrayList<>();
-        for (SubwayTravelTimeRequest request : requests) {
-            String start = ServiceUtils.encodeString(request.getName());
-            Long time = request.getTime();
-            targets.add(start);
-
-            List<Subway> subways = findSubwayByKeyword(ServiceUtils.checkAndRemoveSubwayNameSuffixAndEncode(start));
-            if(isResultListEmpty(subways)){
-                log.info("Subway {} does not exist.", start);
-                continue;
-            }
-            
-            Subway subway = subways.get(0);
-            List<SubwayTravelTimeResponse> byTimeFromSubway = subwayTravelTimeRepository.findByTimeFromSubway(subway, Long.valueOf(time)).stream()
-                    .map(SubwayTravelTimeResponse::from)
-                    .collect(Collectors.toList());// request에서 time내에 있는 모든 지하철역들
-            tmpValue.addAll(byTimeFromSubway);
-        }
-
-        Map<String, Set<String>> tmpAddedSet = new HashMap<>();
-        Map<String, List<SubwayTravelTimeResponse>> tmpValueMap = new HashMap<>();
-        for (SubwayTravelTimeResponse stt : tmpValue) {
-            String start = stt.getStart();
-            String destination = stt.getDestination();
-
-            List<SubwayTravelTimeResponse> sttStart = tmpValueMap.getOrDefault(start, new ArrayList<>());
-            List<SubwayTravelTimeResponse> sttDestination = tmpValueMap.getOrDefault(destination, new ArrayList<>());
-            if(targets.contains(start)){
-                Set<String> addedSet = tmpAddedSet.getOrDefault(destination, new HashSet<>());
-                if(!addedSet.contains(start)){
-                    sttDestination.add(stt);
-                    tmpValueMap.put(destination, sttDestination);
-                    addedSet.add(start);
-                    tmpAddedSet.put(destination, addedSet);
-                }
-            }
-            if(targets.contains(destination)){
-                Set<String> addedSet = tmpAddedSet.getOrDefault(start, new HashSet<>());
-                if(!addedSet.contains(destination)){
-                    sttStart.add(stt);
-                    tmpValueMap.put(start, sttStart);
-                    addedSet.add(destination);
-                    tmpAddedSet.put(start, addedSet);
-                }
-            }
-        }
-//        for (String s : tmpValueMap.keySet()) {
-//            log.info("destination: {}, tmpValueMap: {}", encodeString(s), tmpValueMap.get(s));
-//        }
-
-        List<TravelInfo> result = tmpValueMap.keySet().stream()
-                .filter(k -> targets.contains(k) ? (tmpValueMap.get(k).size() >= targetSize - 1) : (tmpValueMap.get(k).size() >= targetSize))
-                .map(k -> {
-                    List<SubwayTravelTimeResponse> subwayTravelTimeResponses = tmpValueMap.get(k);
-                    return TravelInfo.of(k, subwayTravelTimeResponses.stream()
-                            .map(stt -> StartInfo.of(stt.getStart() == k ? stt.getDestination() : stt.getStart(),
-                                    TotalTimeAndTransferCount.of(stt.getTotalTime(), stt.getTransferCount())))
-                            .collect(Collectors.toList()));
-                }).collect(Collectors.toList());
-
-        return SubwayTravelTimeMultipleResponse.of(Long.valueOf(result.size()), result);
-    }
-
     public List<KakaoSearchByCategoryResponse> findToNearestSubway(Point request) {
-        final String uri =
-                String.format("https://dapi.kakao.com/v2/local/search/category.json?category_group_code=SW8&page=1&size=5&sort=distance&x=%s&y=%s&radius=1000", request.getX(), request.getY());
-
-        List<KakaoSearchByCategoryResponse> responseRaw = webClient.get()
-                .uri(uri)
-                .header("Authorization", "KakaoAK " + KAKAO_API_KEY)
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToFlux(KakaoSearchByCategoryResponseRaw.class)
-                .map(res -> res.getDocuments())
-                .map(KakaoSearchByCategoryResponse::fromDocumentList)
-                .single().blockOptional()
-                .orElseThrow(() -> new RuntimeException("No Results."));
+        List<KakaoSearchByCategoryResponse> responseRaw = kakaoApi.findToNearestSubway(request);
 
         List<KakaoSearchByCategoryResponse> response = new ArrayList<>();
         Set<String> subwayNamesSet = new HashSet<>();
@@ -248,14 +110,11 @@ public class SubwayService {
         return response;
     }
 
-    private List<Subway> findSubwayByKeyword(String keyword){
+    public List<Subway> findSubwayByKeyword(String keyword){
 
         return subwayRepository.findAllByName(keyword);
     }
 
-    private boolean isResultListEmpty(List<?> result) {
-        return result.size() == 0;
-    }
 
     private boolean invalidFilename(String filename) {
         return !filename.endsWith(".csv");
