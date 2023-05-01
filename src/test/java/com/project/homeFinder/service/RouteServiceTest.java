@@ -1,20 +1,20 @@
 package com.project.homeFinder.service;
 
 import com.project.homeFinder.dto.request.TMapTransitRoutesSubRequest;
+import com.project.homeFinder.service.api.TMapApi;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 class RouteServiceTest {
 
     private final RouteService routeService;
+    private final TMapApi tMapApi;
 
-    public RouteServiceTest(@Autowired RouteService routeService) {
+    public RouteServiceTest(@Autowired RouteService routeService, @Autowired TMapApi tMapApi) {
         this.routeService = routeService;
+        this.tMapApi = tMapApi;
     }
 
     @Test
@@ -22,7 +22,7 @@ class RouteServiceTest {
         // Given
 
         // When & Then
-        routeService.calculateRouteTmapTransit(createTMapTransitRoutesSubRequest());
+        tMapApi.calculateRouteTmapTransit(createTMapTransitRoutesSubRequest());
 
     }
 
