@@ -29,7 +29,10 @@ public class SubwayTravelTimeRepositoryCustomImpl implements SubwayTravelTimeRep
 
     @Override
     public List<SubwayTravelTime> findByTimeFromSubway(Subway subway, Long time) {
-        return em.createQuery("SELECT s FROM SubwayTravelTime s WHERE (s.subA=:subway OR s.subB=:subway) AND s.totalTime<=:time", SubwayTravelTime.class)
+        return em.createQuery("SELECT s FROM SubwayTravelTime s" +
+                        " JOIN FETCH s.subA" +
+                        " JOIN FETCH s.subB" +
+                        " WHERE (s.subA = : subway OR s.subB = :subway) AND s.totalTime<=:time", SubwayTravelTime.class)
                 .setParameter("subway", subway)
                 .setParameter("time", time)
                 .getResultList();
