@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Getter
@@ -35,5 +36,16 @@ public class SubwayTravelTime {
     public static SubwayTravelTime of(Subway subA, Subway subB, Long totalTime, Long transferCount) {
 
         return new SubwayTravelTime(subA, subB, totalTime, transferCount);
+    }
+
+    @Override
+    public String toString() {
+        return "SubwayTravelTime{" +
+                "id=" + id +
+                ", subA=" + subA.getName() +
+                ", subB=" + subB.getName() +
+                ", totalTime=" + totalTime +
+                ", transferCount=" + transferCount +
+                '}';
     }
 }
