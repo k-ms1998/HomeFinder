@@ -1,5 +1,7 @@
 package com.project.homeFinder.service;
 
+import com.project.homeFinder.domain.Apartment;
+import com.project.homeFinder.domain.ApartmentToSubway;
 import com.project.homeFinder.domain.Subway;
 import com.project.homeFinder.domain.SubwayTravelTime;
 import com.project.homeFinder.dto.Point;
@@ -7,12 +9,14 @@ import com.project.homeFinder.dto.request.PointTravelTimeRequest;
 import com.project.homeFinder.dto.request.SingleDestinationRequest;
 import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
 import com.project.homeFinder.dto.response.*;
+import com.project.homeFinder.dto.response.domain.ApartmentTravelTime;
 import com.project.homeFinder.repository.ApartmentToSubwayRepository;
 import com.project.homeFinder.repository.SubwayTravelTimeRepository;
 import com.project.homeFinder.service.api.KakaoApi;
 import com.project.homeFinder.util.ServiceUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.internal.util.collections.ConcurrentReferenceHashMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +30,10 @@ public class SubwayTravelTimeService {
 
     private final RouteService routeService;
     private final SubwayService subwayService;
+
     private final SubwayTravelTimeRepository subwayTravelTimeRepository;
+    private final ApartmentToSubwayRepository apartmentToSubwayRepository;
+
     private final KakaoApi kakaoApi;
 
     // 각 출발지점으로 부터, 주어진 시간이내의 모든 지하철역들 찾기
@@ -144,7 +151,6 @@ public class SubwayTravelTimeService {
                 }
             }
         }
-        log.info("findSubwaysByTimeMultipleEntity: tmpValueMap->{}", tmpValueMap);
 
         List<SubwayTravelTimeMultipleEntityResponse.TravelInfo> result = tmpValueMap.keySet().stream()
                 .filter(k -> targets.contains(k) ? (tmpValueMap.get(k).size() >= targetSize - 1) : (tmpValueMap.get(k).size() >= targetSize))
@@ -180,7 +186,6 @@ public class SubwayTravelTimeService {
 
         List<List<SubwayTravelTimeRequest>> subwayCombinations = new ArrayList<>();
         findSubwayCombinations(0, destinationCount, nearestSubwayCount, request, new ArrayList<>(), subwayCombinations);
-        log.info("subwayCombinations: {}", subwayCombinations);
 
         List<SubwayTravelTimeMultipleResponse> result = subwayCombinations.stream()
                 .map(sc1 -> sc1.stream()
@@ -225,7 +230,7 @@ public class SubwayTravelTimeService {
         return SubwayTravelTimeMultipleResponse.of(Long.valueOf(travelInfo.size()), travelInfo);
     }
 
-    public SubwayTravelTimeMultipleEntityResponse findTransitTimeFromMultiplePointsAndTimeApt(List<PointTravelTimeRequest> pointTravelTimeRequest) {
+    public ApartmentTravelTimeResponse  findTransitTimeFromMultiplePointsAndTimeApt(List<PointTravelTimeRequest> pointTravelTimeRequest) {
         // 각 지점으로부터 가장 까가운 지하철역 찾기
         List<List<SubwayTravelTimeRequest>> request = pointTravelTimeRequest.stream()
                 .map(r -> kakaoApi.findToNearestSubway(Point.of(r.getX(), r.getY())).stream()
@@ -244,9 +249,8 @@ public class SubwayTravelTimeService {
 
         List<List<SubwayTravelTimeRequest>> subwayCombinations = new ArrayList<>();
         findSubwayCombinations(0, destinationCount, nearestSubwayCount, request, new ArrayList<>(), subwayCombinations);
-        log.info("subwayCombinations: {}", subwayCombinations);
 
-        List<SubwayTravelTimeMultipleEntityResponse> result = subwayCombinations.stream()
+        List<SubwayTravelTimeMultipleEntityResponse> responses = subwayCombinations.stream()
                 .map(sc1 -> sc1.stream()
                         .map(sttr -> SubwayTravelTimeRequest.of(ServiceUtils.checkAndRemoveSubwayNameSuffix(sttr.getName()), sttr.getTime()))
                         .collect(Collectors.toList())
@@ -256,8 +260,8 @@ public class SubwayTravelTimeService {
 
         Map<Subway, Set<Subway>> sttmrSet = new HashMap<>();
         Map<Subway, List<SubwayTravelTimeMultipleEntityResponse.TravelInfo.StartInfo>> sttmrMap = new HashMap<>();
-        for (SubwayTravelTimeMultipleEntityResponse subwayTravelTimeMultipleResponse : result) {
-            subwayTravelTimeMultipleResponse.getTravelInfos().forEach(sttmr -> {
+        for (SubwayTravelTimeMultipleEntityResponse subwayTravelTimeMultipleEntityResponse : responses) {
+            subwayTravelTimeMultipleEntityResponse.getTravelInfos().forEach(sttmr -> {
                 Subway destination = sttmr.getDestination();
                 List<SubwayTravelTimeMultipleEntityResponse.TravelInfo.StartInfo> startInfos = sttmr.getStartInfos();
                 List<SubwayTravelTimeMultipleEntityResponse.TravelInfo.StartInfo> value = sttmrMap.getOrDefault(destination, new ArrayList<>());
@@ -266,9 +270,8 @@ public class SubwayTravelTimeService {
                 // 중복되는 StartInfo 들 제거
                 value.addAll(startInfos.stream()
                         .filter(s -> {
-                            Subway start = s.getStart();
-                            if(!added.contains(start)){
-                                added.add(start);
+                            if(!added.contains(s.getStart())){
+                                added.add(s.getStart());
                                 return true;
                             }
 
@@ -281,12 +284,36 @@ public class SubwayTravelTimeService {
             });
         }
 
-        List<SubwayTravelTimeMultipleEntityResponse.TravelInfo> travelInfo = sttmrMap.keySet().stream()
+        List<SubwayTravelTimeMultipleEntityResponse.TravelInfo> travelInfos = sttmrMap.keySet().stream()
                 .map(k -> new SubwayTravelTimeMultipleEntityResponse.TravelInfo(k, sttmrMap.get(k)))
                 .collect(Collectors.toList());
 
+        Map<Apartment, Map<Subway, TotalTimeAndTransferCount>> apartmentMap = new HashMap<>();
+        travelInfos.stream()
+                .forEach(ti -> {
+                    Map<Subway, TotalTimeAndTransferCount> value = new HashMap<>();
+                    ti.getStartInfos().stream()
+                            .forEach(si -> value.put(si.getStart(), si.getTotalTimeAndTransferCount()));
 
-        return SubwayTravelTimeMultipleEntityResponse.of(Long.valueOf(travelInfo.size()), travelInfo);
+                    apartmentToSubwayRepository.findBySubway(ti.getDestination()).stream()
+                            .map(ats -> ats.getApartment())
+                            .forEach(apartment -> apartmentMap.put(apartment, value));
+                });
+
+        Map<String, List<ApartmentTravelTime>> result = new HashMap<>();
+        List<ApartmentTravelTime> apartmentTravelTimes = apartmentMap.keySet().stream()
+                .map(k -> ApartmentTravelTime.of(k, apartmentMap.get(k)))
+                .collect(Collectors.toList());
+
+        apartmentTravelTimes.stream()
+                .forEach(att -> {
+                    String dong = att.getApartment().getDong();
+                    List<ApartmentTravelTime> value = result.getOrDefault(dong, new ArrayList<>());
+                    value.add(att);
+                    result.put(dong, value);
+                });
+
+        return ApartmentTravelTimeResponse.of(Long.valueOf(result.size()), result);
     }
 
 
