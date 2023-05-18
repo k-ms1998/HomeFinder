@@ -301,11 +301,8 @@ public class SubwayTravelTimeService {
                 });
 
         Map<String, List<ApartmentTravelTime>> result = new HashMap<>();
-        List<ApartmentTravelTime> apartmentTravelTimes = apartmentMap.keySet().stream()
+        apartmentMap.keySet().stream()
                 .map(k -> ApartmentTravelTime.of(k, apartmentMap.get(k)))
-                .collect(Collectors.toList());
-
-        apartmentTravelTimes.stream()
                 .forEach(att -> {
                     String dong = att.getApartment().getDong();
                     List<ApartmentTravelTime> value = result.getOrDefault(dong, new ArrayList<>());
