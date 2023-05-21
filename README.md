@@ -38,8 +38,8 @@
 </br>
 
 ## 4. ERD
- ![제목 없는 다이어그램](https://github.com/k-ms1998/HomeFinder/assets/71029015/aeff01ce-165f-4aab-8ab0-57282d137d57)
- 
+ ![제목 없는 다이어그램 (3)](https://github.com/k-ms1998/HomeFinder/assets/71029015/132a221d-2e63-45f9-b699-71c30b7f8009)
+
 <br>
 
 ## 5. 핵심 API
@@ -47,7 +47,7 @@
 ![image](https://github.com/k-ms1998/HomeFinder/assets/71029015/e3b4d1c7-3480-4039-9405-dcfd4123f0e0)
 
 `다수의 좌표들에서 주어진 시간내에 도달 가능한 아파트들 반환`
-
+![image](https://github.com/k-ms1998/HomeFinder/assets/71029015/115a9eea-eadb-416a-a997-f2905c03ca22)
 
 `지하철역 이름으로 검색해서 두 개의 지하쳘역 간의 도달하는데 걸리는 시간 반`
 ![image](https://github.com/k-ms1998/HomeFinder/assets/71029015/6bf077cf-68ac-4024-a11d-471e95a63bcf)
