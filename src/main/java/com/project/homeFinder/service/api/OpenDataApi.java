@@ -20,9 +20,9 @@ public class OpenDataApi {
 
     private final WebClient webClient;
 
-    public ApartmentBasicInfoXmlResponseRaw openDataFindAllApt() {
+    public ApartmentBasicInfoXmlResponseRaw openDataFindAllApt(int page, int size) {
         final String uri =
-                String.format("http://apis.data.go.kr/1613000/AptListService2/getTotalAptList?serviceKey=%s", OPEN_DATA_API_KEY);
+                String.format("http://apis.data.go.kr/1613000/AptListService2/getTotalAptList?serviceKey=%s&pageNo=%d&numOfRows=%d", OPEN_DATA_API_KEY, page, size);
 
         try {
             return webClient.get()
@@ -36,6 +36,10 @@ public class OpenDataApi {
         } catch (Exception e) {
             throw new RuntimeException("[OpenDataApi]->{openDataFindAllApt} | Error. Could not fetch Open Data.");
         }
+    }
+
+    public ApartmentBasicInfoXmlResponseRaw openDataFindAllApt() {
+        return openDataFindAllApt(1, 10);
     }
 
 }
