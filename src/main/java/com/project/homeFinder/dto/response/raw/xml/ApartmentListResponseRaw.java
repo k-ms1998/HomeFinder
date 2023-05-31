@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @AllArgsConstructor
 @XmlRootElement(name = "response")
-public class ApartmentBasicInfoXmlResponseRaw {
+public class ApartmentListResponseRaw {
 
     @XmlElement(name = "header")
     private XmlHeader header;
@@ -80,9 +80,16 @@ public class ApartmentBasicInfoXmlResponseRaw {
         private String resultMsg;
     }
 
-    public List<ApartmentBasicInfoXmlItem> fetchItems(){
+    public List<ApartmentListXmlItem> fetchItems(){
+        if(this.body.items == null){
+            return List.of();
+        }
+        if(this.body.items.item == null){
+            return List.of();
+        }
+
         return this.body.items.item.stream()
-                .map(i -> ApartmentBasicInfoXmlItem.of(
+                .map(i -> ApartmentListXmlItem.of(
                         i.as1,
                         i.as2,
                         i.as3,
