@@ -10,6 +10,7 @@
   - Java 17
   - Spring Boot 3.0.1
   - Spring Data JPA
+  - Spring Batch
   - Swagger
   - Webflux
   - Validation
