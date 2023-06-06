@@ -1,6 +1,6 @@
 package com.project.homeFinder.domain;
 
-import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
+import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -10,7 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-import java.util.Locale;
 import java.util.Objects;
 
 @Entity
@@ -35,7 +34,7 @@ public class Apartment {
         return new Apartment(null, aptCode, bjdCode, dong, name, address, date);
     }
 
-    public static Apartment fromXml(ApartmentBasicInfoXmlItem xml) {
+    public static Apartment fromXml(ApartmentListXmlItem xml) {
         return Apartment.of(
                 xml.getKaptCode(),
                 xml.getBjdCode(),
