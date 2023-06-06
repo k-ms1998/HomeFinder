@@ -2,8 +2,8 @@ package com.project.homeFinder.batch.job;
 
 import com.project.homeFinder.batch.job.step.reader.OpenDataApiApartmentBasicInfoReader;
 import com.project.homeFinder.domain.Apartment;
-import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
-import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlResponseRaw;
+import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
+import com.project.homeFinder.dto.response.raw.xml.ApartmentListResponseRaw;
 import com.project.homeFinder.repository.ApartmentRepository;
 import com.project.homeFinder.service.api.OpenDataApi;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +39,10 @@ public class ApartmentInfoInsertJobConfig {
     private final PlatformTransactionManager platformTransactionManager;
     private final ApartmentRepository apartmentRepository;
 
-    @Bean
-    public Job apartmentInfoInsertJobLaunch() {
+    private static String BJD_CODE = "";
+
+    public Job apartmentInfoInsertJobLaunch(String bjdCode) {
+        BJD_CODE = bjdCode;
         return apartmentInfoInsertJob(
                 this.apartmentInfoInsertStep(
                         this.apartmentBasicInfoXmlResponseRawItemReader(),
@@ -61,12 +63,12 @@ public class ApartmentInfoInsertJobConfig {
 
     @Bean
     @JobScope
-    public Step apartmentInfoInsertStep(ItemReader<ApartmentBasicInfoXmlResponseRaw> apartmentBasicInfoXmlResponseRawItemReader,
-                                        ItemProcessor<ApartmentBasicInfoXmlResponseRaw, List<ApartmentBasicInfoXmlItem>> apartmentBasicInfoXmlResponseRawItemProcessor,
-                                        ItemWriter<List<ApartmentBasicInfoXmlItem>> apartmentBasicInfoXmlResponseRawItemWriter) {
+    public Step apartmentInfoInsertStep(ItemReader<ApartmentListResponseRaw> apartmentBasicInfoXmlResponseRawItemReader,
+                                        ItemProcessor<ApartmentListResponseRaw, List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemProcessor,
+                                        ItemWriter<List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemWriter) {
 
         return new StepBuilder("apartmentInfoInsertStep", jobRepository)
-                .<ApartmentBasicInfoXmlResponseRaw, List<ApartmentBasicInfoXmlItem>>chunk(1, platformTransactionManager)
+                .<ApartmentListResponseRaw, List<ApartmentListXmlItem>>chunk(1, platformTransactionManager)
                 .reader(apartmentBasicInfoXmlResponseRawItemReader)
                 .processor(apartmentBasicInfoXmlResponseRawItemProcessor)
                 .writer(apartmentBasicInfoXmlResponseRawItemWriter)
@@ -75,17 +77,19 @@ public class ApartmentInfoInsertJobConfig {
 
     @Bean
     @StepScope
-    public ItemReader<ApartmentBasicInfoXmlResponseRaw> apartmentBasicInfoXmlResponseRawItemReader() {
+    public ItemReader<ApartmentListResponseRaw> apartmentBasicInfoXmlResponseRawItemReader() {
+        OpenDataApiApartmentBasicInfoReader itemReader = new OpenDataApiApartmentBasicInfoReader(openDataApi);
+        itemReader.updateBjdCode(BJD_CODE);
 
-        return new OpenDataApiApartmentBasicInfoReader(openDataApi);
+        return itemReader;
     }
 
     @Bean
     @StepScope
-    public ItemProcessor<ApartmentBasicInfoXmlResponseRaw, List<ApartmentBasicInfoXmlItem>> apartmentBasicInfoXmlResponseRawItemProcessor(){
+    public ItemProcessor<ApartmentListResponseRaw, List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemProcessor(){
 
         return item -> item.fetchItems().stream()
-                .map(i -> ApartmentBasicInfoXmlItem.of(
+                .map(i -> ApartmentListXmlItem.of(
                         i.getAs1(),
                         i.getAs2(),
                         i.getAs3(),
@@ -98,7 +102,7 @@ public class ApartmentInfoInsertJobConfig {
 
     @Bean
     @StepScope
-    public ItemWriter<List<ApartmentBasicInfoXmlItem>> apartmentBasicInfoXmlResponseRawItemWriter(ApartmentRepository apartmentRepository) {
+    public ItemWriter<List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemWriter(ApartmentRepository apartmentRepository) {
 
         return items -> {
             items.forEach(item -> item.stream()
