@@ -10,4 +10,6 @@ public interface SubwayRepository extends JpaRepository<Subway, Long> {
     Optional<Subway> findByLineAndName(String line, String name);
 
     List<Subway> findAllByName(String name);
+
+    Optional<Subway> findFirstByName(String name);
 }

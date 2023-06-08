@@ -29,9 +29,28 @@ public class Apartment {
     private String name;
     private String address;
     private String date;
+    private String x;
+    private String y;
 
     public static Apartment of(String aptCode, String bjdCode, String dong, String name, String address, String date) {
-        return new Apartment(null, aptCode, bjdCode, dong, name, address, date);
+        return Apartment.of(aptCode, bjdCode, dong, name, address, date, null, null);
+    }
+
+    public static Apartment of(String aptCode, String bjdCode, String dong, String name, String address, String date, String x, String y) {
+        return new Apartment(null, aptCode, bjdCode, dong, name, address, date, x, y);
+    }
+
+    public void updateX(String x) {
+        this.x = x;
+    }
+
+    public void updateY(String y) {
+        this.y = y;
+    }
+
+    public void updateXY(String x, String y) {
+        this.x = x;
+        this.y = y;
     }
 
     public static Apartment fromXml(ApartmentListXmlItem xml) {

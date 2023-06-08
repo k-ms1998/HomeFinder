@@ -2,10 +2,21 @@ package com.project.homeFinder.batch.job;
 
 import com.project.homeFinder.batch.job.step.reader.OpenDataApiApartmentBasicInfoReader;
 import com.project.homeFinder.domain.Apartment;
-import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
+import com.project.homeFinder.domain.ApartmentToSubway;
+import com.project.homeFinder.domain.Subway;
+import com.project.homeFinder.domain.SubwayTravelTime;
+import com.project.homeFinder.dto.Point;
+import com.project.homeFinder.dto.response.KakaoSearchByAddressResponse;
+import com.project.homeFinder.dto.response.KakaoSearchByCategoryResponse;
+import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListResponseRaw;
 import com.project.homeFinder.repository.ApartmentRepository;
+import com.project.homeFinder.repository.ApartmentToSubwayRepository;
+import com.project.homeFinder.repository.SubwayRepository;
+import com.project.homeFinder.service.SubwayService;
+import com.project.homeFinder.service.api.KakaoApi;
 import com.project.homeFinder.service.api.OpenDataApi;
+import com.project.homeFinder.util.ServiceUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -34,10 +45,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ApartmentInfoInsertJobConfig {
 
-    private final OpenDataApi openDataApi;
     private final JobRepository jobRepository;
     private final PlatformTransactionManager platformTransactionManager;
+
+    private final OpenDataApi openDataApi;
+    private final KakaoApi kakaoApi;
+
+    private final SubwayService subwayService;
+
     private final ApartmentRepository apartmentRepository;
+    private final ApartmentToSubwayRepository apartmentToSubwayRepository;
+    private final SubwayRepository subwayRepository;
 
     private static String BJD_CODE = "";
 
@@ -64,11 +82,11 @@ public class ApartmentInfoInsertJobConfig {
     @Bean
     @JobScope
     public Step apartmentInfoInsertStep(ItemReader<ApartmentListResponseRaw> apartmentBasicInfoXmlResponseRawItemReader,
-                                        ItemProcessor<ApartmentListResponseRaw, List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemProcessor,
-                                        ItemWriter<List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemWriter) {
+                                        ItemProcessor<ApartmentListResponseRaw, List<Apartment>> apartmentBasicInfoXmlResponseRawItemProcessor,
+                                        ItemWriter<List<Apartment>> apartmentBasicInfoXmlResponseRawItemWriter) {
 
         return new StepBuilder("apartmentInfoInsertStep", jobRepository)
-                .<ApartmentListResponseRaw, List<ApartmentListXmlItem>>chunk(1, platformTransactionManager)
+                .<ApartmentListResponseRaw, List<Apartment>>chunk(1, platformTransactionManager)
                 .reader(apartmentBasicInfoXmlResponseRawItemReader)
                 .processor(apartmentBasicInfoXmlResponseRawItemProcessor)
                 .writer(apartmentBasicInfoXmlResponseRawItemWriter)
@@ -86,27 +104,52 @@ public class ApartmentInfoInsertJobConfig {
 
     @Bean
     @StepScope
-    public ItemProcessor<ApartmentListResponseRaw, List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemProcessor(){
+    public ItemProcessor<ApartmentListResponseRaw, List<Apartment>> apartmentBasicInfoXmlResponseRawItemProcessor(){
 
         return item -> item.fetchItems().stream()
-                .map(i -> ApartmentListXmlItem.of(
-                        i.getAs1(),
-                        i.getAs2(),
-                        i.getAs3(),
-                        i.getAs4(),
-                        i.getBjdCode(),
-                        i.getKaptCode(),
-                        i.getKaptName()
-                )).collect(Collectors.toList());
+                .filter(i -> apartmentRepository.countByName(i.getKaptName()) == 0L)
+                .map(i -> openDataApi.openDataAptBasicInfo(i.getKaptCode()).toItem().toEntity())
+                .collect(Collectors.toList());
     }
 
     @Bean
     @StepScope
-    public ItemWriter<List<ApartmentListXmlItem>> apartmentBasicInfoXmlResponseRawItemWriter(ApartmentRepository apartmentRepository) {
+    public ItemWriter<List<Apartment>> apartmentBasicInfoXmlResponseRawItemWriter(ApartmentRepository apartmentRepository) {
 
-        return items -> {
-            items.forEach(item -> item.stream()
-                    .map(Apartment::fromXml).forEach(info -> apartmentRepository.save(info)));
-        };
+        return items -> items.forEach(item -> item.stream()
+                .filter(info -> checkIfAddressExists(info.getAddress()))
+                .forEach(info -> {
+                    String roadAddress = info.getAddress();
+
+                    KakaoSearchByAddressResponse byAddress = kakaoApi.findByAddress(roadAddress).get(0);
+                    info.updateXY(byAddress.getX(), byAddress.getY());
+
+                    Apartment apartment = apartmentRepository.saveAndFlush(info);
+
+                    subwayService.findToNearestSubway(new Point(byAddress.getX(), byAddress.getY())).stream()
+                            .forEach(ksbcr -> {
+                                Long distance = Long.parseLong(ksbcr.getDistance()); // 가장 가까운 지하철역까지 거리(m)
+                                Long time = distance / 80;
+                                String subwayName = ServiceUtils.checkAndRemoveSubwayNameSuffix(ksbcr.getName());
+                                subwayRepository.findFirstByName(subwayName)
+                                        .ifPresentOrElse(subway -> {
+                                            apartmentToSubwayRepository.save(ApartmentToSubway.of(apartment, subway, distance, time));
+                                        }, () -> {
+                                            return;
+                                        });
+                            });
+                }));
     }
+
+    private boolean checkIfAddressExists(String roadAddress) {
+        if(roadAddress == null){
+            return false;
+        }
+        if(roadAddress == "" || roadAddress.isBlank()){
+            return false;
+        }
+
+        return true;
+    }
+
 }
