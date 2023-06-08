@@ -76,7 +76,7 @@ public class ApartmentBasicInfoXmlItem {
                 this.getBjdCode(),
                 this.getBjdCode(),
                 this.getKaptName(),
-                this.getDoroJuso(),
+                this.getDoroJuso() != null ? this.getDoroJuso() : this.getKaptAddr(), // 공공데이터 미제공으로 도로주소가 주어지지 않는 경우 발생 예방
                 this.getKaptUsedate()
         );
     }
