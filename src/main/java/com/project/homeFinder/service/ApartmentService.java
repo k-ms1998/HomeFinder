@@ -1,5 +1,6 @@
 package com.project.homeFinder.service;
 
+import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListResponseRaw;
 import com.project.homeFinder.service.api.OpenDataApi;
@@ -27,6 +28,14 @@ public class ApartmentService {
         List<ApartmentListXmlItem> apartmentListXmlItems = apartmentListResponseRaw.fetchItems();
 
         return apartmentListXmlItems;
+    }
+
+    public ApartmentBasicInfoXmlItem findAptBasicInfoApi(String kaptCode) {
+        if(kaptCode.equals("") || kaptCode.isBlank() || kaptCode == null){
+            throw new RuntimeException("KapCode required.");
+        }
+
+        return openDataApi.openDataAptBasicInfo(kaptCode).toItem();
     }
 
 }

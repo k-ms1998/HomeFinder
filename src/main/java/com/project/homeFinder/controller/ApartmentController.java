@@ -1,6 +1,9 @@
 package com.project.homeFinder.controller;
 
 import com.project.homeFinder.batch.job.ApartmentInfoInsertJobConfig;
+import com.project.homeFinder.domain.Apartment;
+import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
+import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlResponseRaw;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
 import com.project.homeFinder.service.ApartmentService;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +50,13 @@ public class ApartmentController {
         } else {
             return ResponseEntity.ok(apartmentService.findAllAptInfoOpenDataApiBjdCode(bjdCode));
         }
+    }
+
+    @GetMapping("/open_data/find/basicInfo")
+    public ResponseEntity<ApartmentBasicInfoXmlItem> findAptBasicInfoApi(@RequestParam(defaultValue = "") String kaptCode) {
+        ApartmentBasicInfoXmlItem aptBasicInfo = apartmentService.findAptBasicInfoApi(kaptCode);
+
+        return ResponseEntity.ok(aptBasicInfo);
     }
 
 }
