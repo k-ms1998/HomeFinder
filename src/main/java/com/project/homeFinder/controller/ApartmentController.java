@@ -40,8 +40,7 @@ public class ApartmentController {
 
         jobLauncher.run(apartmentInfoInsertJobConfig.apartmentInfoInsertJobLaunch(bjdCode),
                 new JobParameters(
-                        Map.of(String.format("%s_%s", "launchDateAndTime", bjdCode.equals("") ? "EMPTY" : bjdCode),
-                                new JobParameter<>(LocalDateTime.now().toString(), String.class)
+                        Map.of("launchDateAndTime", new JobParameter<>(LocalDateTime.now().toString(), String.class)
                         )
                 ));
 
