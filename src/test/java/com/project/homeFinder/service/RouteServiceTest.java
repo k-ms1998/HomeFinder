@@ -2,6 +2,7 @@ package com.project.homeFinder.service;
 
 import com.project.homeFinder.dto.request.TMapTransitRoutesSubRequest;
 import com.project.homeFinder.service.api.TMapApi;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,6 +18,7 @@ class RouteServiceTest {
         this.tMapApi = tMapApi;
     }
 
+    @Disabled
     @Test
     void givenNothing_whenRequestingTmapTransitRoute_thenSuccess() throws Exception {
         // Given

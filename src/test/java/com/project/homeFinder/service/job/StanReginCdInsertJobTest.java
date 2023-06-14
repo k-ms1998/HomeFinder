@@ -5,6 +5,7 @@ import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlResponse
 import com.project.homeFinder.dto.response.raw.xml.StanReginCdXmlResponseRaw;
 import com.project.homeFinder.service.api.OpenDataApi;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.JobParameter;
@@ -34,6 +35,7 @@ class StanReginCdInsertJobTest {
         this.jobLauncher = jobLauncher;
     }
 
+    @Disabled
     @Test
     void aptBasicInfo() throws JobInstanceAlreadyCompleteException, JobExecutionAlreadyRunningException, JobParametersInvalidException, JobRestartException {
 

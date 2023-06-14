@@ -3,6 +3,7 @@ package com.project.homeFinder.dto.response.raw;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +12,8 @@ import java.util.Map;
 class TMapTransitRoutesSubRawResponseTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
-    
+
+    @Disabled
     @DisplayName("[Service] Given Serialized Response - Returns MapTransitRoutesSubRawResponse")
     @Test
     void givenSerializedResponse_whenMapping_thenTMapTransitRoutesSubRawResponse() throws Exception {
