@@ -1,17 +1,15 @@
 package com.project.homeFinder.batch.job;
 
 import com.project.homeFinder.batch.job.step.reader.OpenDataApiApartmentBasicInfoReader;
+import com.project.homeFinder.batch.tasklet.ReadBjdCodeTasklet;
 import com.project.homeFinder.domain.Apartment;
 import com.project.homeFinder.domain.ApartmentToSubway;
-import com.project.homeFinder.domain.Subway;
-import com.project.homeFinder.domain.SubwayTravelTime;
 import com.project.homeFinder.dto.Point;
 import com.project.homeFinder.dto.response.KakaoSearchByAddressResponse;
-import com.project.homeFinder.dto.response.KakaoSearchByCategoryResponse;
-import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListResponseRaw;
 import com.project.homeFinder.repository.ApartmentRepository;
 import com.project.homeFinder.repository.ApartmentToSubwayRepository;
+import com.project.homeFinder.repository.BjdCodeRepository;
 import com.project.homeFinder.repository.SubwayRepository;
 import com.project.homeFinder.service.SubwayService;
 import com.project.homeFinder.service.api.KakaoApi;
@@ -27,9 +25,11 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -56,6 +56,7 @@ public class ApartmentInfoInsertJobConfig {
     private final ApartmentRepository apartmentRepository;
     private final ApartmentToSubwayRepository apartmentToSubwayRepository;
     private final SubwayRepository subwayRepository;
+    private final BjdCodeRepository bjdCodeRepository;
 
     private static String BJD_CODE = "";
 
@@ -63,19 +64,34 @@ public class ApartmentInfoInsertJobConfig {
         BJD_CODE = bjdCode;
         return apartmentInfoInsertJob(
                 this.apartmentInfoInsertStep(
-                        this.apartmentBasicInfoXmlResponseRawItemReader(),
+                        this.apartmentBasicInfoXmlResponseRawItemReader(""),
                         this.apartmentBasicInfoXmlResponseRawItemProcessor(),
                         this.apartmentBasicInfoXmlResponseRawItemWriter(apartmentRepository)
-                )
+                ),
+                this.readAllBjdCodeStep(this.bjdCodeTasklet(bjdCodeRepository))
         );
     }
 
     @Bean
-    public Job apartmentInfoInsertJob(Step apartmentInfoInsertStep) {
+    public Job apartmentInfoInsertJob(Step apartmentInfoInsertStep, Step readAllBjdCodeStep) {
+        log.info("[ApartmentInfoInsertJobConfig] Job Launched");
 
         return new JobBuilder("apartmentInfoInsertJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
-                .start(apartmentInfoInsertStep)
+                .start(readAllBjdCodeStep)
+                    .on("CONTINUABLE").to(apartmentInfoInsertStep).next(readAllBjdCodeStep)
+                    .from(readAllBjdCodeStep).on("COMPLETED").end()
+                .end()
+                .build();
+    }
+
+    @Bean
+    @JobScope
+    public Step readAllBjdCodeStep(Tasklet bjdCodeTasklet) {
+        log.info("[ApartmentInfoInsertJobConfig] readAllBjdCodeStep Launched");
+
+        return new StepBuilder("readAllBjdCodeStep", jobRepository)
+                .tasklet(bjdCodeTasklet, platformTransactionManager)
                 .build();
     }
 
@@ -84,9 +100,10 @@ public class ApartmentInfoInsertJobConfig {
     public Step apartmentInfoInsertStep(ItemReader<ApartmentListResponseRaw> apartmentBasicInfoXmlResponseRawItemReader,
                                         ItemProcessor<ApartmentListResponseRaw, List<Apartment>> apartmentBasicInfoXmlResponseRawItemProcessor,
                                         ItemWriter<List<Apartment>> apartmentBasicInfoXmlResponseRawItemWriter) {
+        log.info("[ApartmentInfoInsertJobConfig] apartmentInfoInsertStep Launched");
 
         return new StepBuilder("apartmentInfoInsertStep", jobRepository)
-                .<ApartmentListResponseRaw, List<Apartment>>chunk(1, platformTransactionManager)
+                .<ApartmentListResponseRaw, List<Apartment>>chunk(10, platformTransactionManager)
                 .reader(apartmentBasicInfoXmlResponseRawItemReader)
                 .processor(apartmentBasicInfoXmlResponseRawItemProcessor)
                 .writer(apartmentBasicInfoXmlResponseRawItemWriter)
@@ -95,9 +112,16 @@ public class ApartmentInfoInsertJobConfig {
 
     @Bean
     @StepScope
-    public ItemReader<ApartmentListResponseRaw> apartmentBasicInfoXmlResponseRawItemReader() {
+    public Tasklet bjdCodeTasklet(BjdCodeRepository bjdCodeRepository) {
+        return new ReadBjdCodeTasklet(bjdCodeRepository);
+    }
+
+    @Bean
+    @StepScope
+    public ItemReader<ApartmentListResponseRaw> apartmentBasicInfoXmlResponseRawItemReader
+            (@Value("#{jobExecutionContext['bjdCode']}") String bjdCode) {
         OpenDataApiApartmentBasicInfoReader itemReader = new OpenDataApiApartmentBasicInfoReader(openDataApi);
-        itemReader.updateBjdCode(BJD_CODE);
+        itemReader.updateBjdCode(bjdCode);
 
         return itemReader;
     }
@@ -121,7 +145,12 @@ public class ApartmentInfoInsertJobConfig {
                 .forEach(info -> {
                     String roadAddress = info.getAddress();
 
-                    KakaoSearchByAddressResponse byAddress = kakaoApi.findByAddress(roadAddress).get(0);
+                    List<KakaoSearchByAddressResponse> searchByAddressResponses = kakaoApi.findByAddress(roadAddress);
+                    if(searchByAddressResponses.size() == 0){
+                        return;
+                    }
+
+                    KakaoSearchByAddressResponse byAddress = searchByAddressResponses.get(0);
                     info.updateXY(byAddress.getX(), byAddress.getY());
 
                     Apartment apartment = apartmentRepository.saveAndFlush(info);

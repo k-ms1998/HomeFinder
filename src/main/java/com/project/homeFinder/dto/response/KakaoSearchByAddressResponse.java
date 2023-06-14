@@ -25,9 +25,23 @@ public class KakaoSearchByAddressResponse {
 
     public static KakaoSearchByAddressResponse fromComplexAddress(KakaoSearchByAddressResponseRaw.ComplexAddress complexAddress) {
         return new KakaoSearchByAddressResponse(
-                complexAddress.getRoad_address().getAddress_name(),
+                addressExists(complexAddress) ? complexAddress.getRoad_address().getAddress_name() : "",
                 complexAddress.getX(),
                 complexAddress.getY()
         );
+    }
+
+    private static boolean addressExists(KakaoSearchByAddressResponseRaw.ComplexAddress complexAddress) {
+        if(complexAddress == null){
+            return false;
+        }
+        if(complexAddress.getRoad_address() == null){
+            return false;
+        }
+        if(complexAddress.getRoad_address().getAddress_name() == null){
+            return false;
+        }
+
+        return true;
     }
 }
