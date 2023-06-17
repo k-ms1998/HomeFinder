@@ -34,6 +34,7 @@ dependencies {
 	implementation 'com.sun.xml.bind:jaxb-core'
 	implementation 'com.sun.xml.bind:jaxb-impl'
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	runtimeOnly 'com.h2database:h2'
