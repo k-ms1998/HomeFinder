@@ -21,4 +21,7 @@ spring:
       names: ${job.name:NONE}
     jdbc:
       initialize-schema: always
+  data:
+    redis:
+      url: ${REDIS_URL} # Heroku CLI 에서 가져온 REDIS_URL 값 주입 (Heroku 사이트 X)
 

@@ -5,13 +5,16 @@ import com.project.homeFinder.domain.ApartmentToSubway;
 import com.project.homeFinder.domain.Subway;
 import com.project.homeFinder.domain.SubwayTravelTime;
 import com.project.homeFinder.dto.Point;
+import com.project.homeFinder.dto.cache.ApartmentToSubwayCacheDto;
 import com.project.homeFinder.dto.request.PointTravelTimeRequest;
 import com.project.homeFinder.dto.request.SingleDestinationRequest;
 import com.project.homeFinder.dto.request.SubwayTravelTimeRequest;
 import com.project.homeFinder.dto.response.*;
 import com.project.homeFinder.dto.response.domain.ApartmentTravelTime;
+import com.project.homeFinder.repository.ApartmentRepository;
 import com.project.homeFinder.repository.ApartmentToSubwayRepository;
 import com.project.homeFinder.repository.SubwayTravelTimeRepository;
+import com.project.homeFinder.repository.cache.ApartmentToSubwayCacheRepository;
 import com.project.homeFinder.service.api.KakaoApi;
 import com.project.homeFinder.util.ServiceUtils;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +36,9 @@ public class SubwayTravelTimeService {
 
     private final SubwayTravelTimeRepository subwayTravelTimeRepository;
     private final ApartmentToSubwayRepository apartmentToSubwayRepository;
+    private final ApartmentRepository apartmentRepository;
+
+    private final ApartmentToSubwayCacheRepository apartmentToSubwayCacheRepository;
 
     private final KakaoApi kakaoApi;
 
@@ -295,9 +301,33 @@ public class SubwayTravelTimeService {
                     ti.getStartInfos().stream()
                             .forEach(si -> value.put(si.getStart(), si.getTotalTimeAndTransferCount()));
 
-                    apartmentToSubwayRepository.findBySubway(ti.getDestination()).stream()
-                            .map(ats -> ats.getApartment())
-                            .forEach(apartment -> apartmentMap.put(apartment, value));
+                    Subway destination = ti.getDestination();
+                    List<ApartmentToSubwayCacheDto> fromCache = apartmentToSubwayCacheRepository.getApartmentToSubway(destination.getId());
+                    if(fromCache.size() > 0){ // Redis에 캐싱한 값이 있으면, Redis에서 가져와서 반환하기
+                        fromCache.stream()
+                                .map(dto -> apartmentRepository.findById(dto.getApartmentId()).get())
+                                .forEach(apartment -> apartmentMap.put(apartment, value));
+                    }else{ // Redis에 케싱한 값이 없으면, DB 접근헤서 값들을 가져온 후, Redis에 캐싱하기
+                        List<ApartmentToSubway> apartmentToSubways = apartmentToSubwayRepository.findBySubway(destination);
+                        apartmentToSubwayCacheRepository.setApartmentToSubway(apartmentToSubways.stream()
+                                .map(ats -> ApartmentToSubwayCacheDto.of(
+                                        ats.getId(),
+                                        ats.getApartment().getId(),
+                                        ats.getSubway().getId(),
+                                        ats.getDistance(),
+                                        ats.getTime()
+                                        )
+                                )
+                                .collect(Collectors.toList())
+                        );
+
+                        apartmentToSubways.stream()
+                                .map(ats -> ats.getApartment())
+                                .forEach(apartment -> {
+                                    apartmentMap.put(apartment, value);
+                                });
+                    }
+
                 });
 
         Map<String, List<ApartmentTravelTime>> result = new HashMap<>();
