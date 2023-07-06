@@ -1,5 +1,6 @@
 package com.project.homeFinder.domain;
 
+import com.project.homeFinder.util.ServiceUtils;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,6 +28,19 @@ public class BusStation {
     private String cityName; // 도시명
     private String adminCity; // 관리도시명
 
-
+    public static BusStation of(String stationId, String stationName, String latitude, String longitude, String collectedDate, String mobileCode, String cityCode, String cityName, String adminCity) {
+        return new BusStation(
+                null,
+                ServiceUtils.encodeString(stationId),
+                ServiceUtils.encodeString(stationName),
+                latitude,
+                longitude,
+                collectedDate,
+                mobileCode,
+                cityCode,
+                ServiceUtils.encodeString(cityName),
+                ServiceUtils.encodeString(adminCity)
+        );
+    }
 
 }
