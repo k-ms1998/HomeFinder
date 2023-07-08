@@ -4,6 +4,7 @@ import com.project.homeFinder.domain.BusStation;
 import com.project.homeFinder.repository.BusStationRepository;
 import com.project.homeFinder.util.ServiceUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +15,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BusStationService {
@@ -39,6 +42,7 @@ public class BusStationService {
             BufferedReader br = new BufferedReader(fileReader);
             boolean skipFirst = false;
 
+            Set<String> stationIds = busStationRepository.fetchAllStationIds();
             List<BusStation> busStationList = new ArrayList<>();
             while (true) {
                 String row = br.readLine();
@@ -64,10 +68,11 @@ public class BusStationService {
                 BusStation busStation = BusStation.of(stationId, stationName, latitude, longitude,
                         collectedDate, mobileCode, cityCode, cityName, adminCity);
 
-                boolean isEmpty = busStationRepository.findByStationName(stationName).isEmpty();
+                boolean isEmpty = !stationIds.contains(stationId);
                 if(isEmpty){
                     busStationList.add(busStation);
                 }
+
             }
 
             busStationRepository.saveAllAndFlush(busStationList);
