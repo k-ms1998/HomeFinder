@@ -24,6 +24,9 @@
   - 공공데이터 공동주택 단지 목록 제공 API
   - 공공데이터 공동주택 기본 정보 제공 API
 
+![image](https://github.com/k-ms1998/HomeFinder/assets/71029015/4bdbc386-43cf-490a-8588-f91f84a7bec9)
+
+
 </br>
 
 ## 3. 프로젝트 개요 및 핵심 기능
