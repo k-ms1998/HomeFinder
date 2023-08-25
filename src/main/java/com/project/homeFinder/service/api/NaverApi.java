@@ -25,7 +25,24 @@ public class NaverApi {
 
     private final WebClient webClient;
 
-    public NaverSearchNewsRawResponse fetchNaverNews(String query, int display, int start, String sort){
+    /**
+     * 키워드로 네이버 뉴스 검색하기
+     * https://developers.naver.com/docs/serviceapi/search/news/news.md#%EB%89%B4%EC%8A%A4
+     */
+    public NaverSearchNewsRawResponse fetchNaverNews(String query, Integer display, Integer start, String sort){
+        if(invalidParameter(query)){
+            throw new RuntimeException("Check Paramter");
+        }
+        if(invalidParameter(display)){
+            throw new RuntimeException("Check Paramter");
+        }
+        if(invalidParameter(start)){
+            throw new RuntimeException("Check Paramter");
+        }
+        if(invalidParameter(sort) || !(sort.equals("sim") || sort.equals("date"))){
+            throw new RuntimeException("'sort' should be either 'sim' or 'date'");
+        }
+
         DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(BASE_URL);
         factory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.VALUES_ONLY);
 
@@ -44,6 +61,21 @@ public class NaverApi {
                 .block();
 
         return result;
+    }
+
+    private <T> boolean invalidParameter(T parameter){
+        if(parameter == null){
+            return true;
+        }
+
+        if(parameter.getClass().isInstance(String.class)){
+            String tmp = String.valueOf(parameter);
+            if(tmp.isBlank() || tmp.isEmpty()){
+                return true;
+            }
+        }
+
+        return false;
     }
 
 

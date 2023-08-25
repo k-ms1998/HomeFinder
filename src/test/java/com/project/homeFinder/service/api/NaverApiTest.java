@@ -30,5 +30,41 @@ class NaverApiTest {
 
     }
 
+    @Test
+    void givenWrongParameters_whenCallingFetchNaverNews_thenFails() throws Exception {
+        // Given
+        final String query = "google";
+        final Integer display = 10;
+        final Integer start = 1;
+        final String sort = "sim";
+
+        final String invalidSort = "invalid";
+
+        // When
+
+        // Then
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> {
+            naverApi.fetchNaverNews(null, display, start, sort);
+        });
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> {
+            naverApi.fetchNaverNews(query, null, start, sort);
+        });
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> {
+            naverApi.fetchNaverNews(query, display, null, sort);
+        });
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> {
+            naverApi.fetchNaverNews(query, display, start, null);
+        });
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> {
+            naverApi.fetchNaverNews(query, display, start, invalidSort);
+        });
+
+
+    }
+
 
 }
