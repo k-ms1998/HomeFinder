@@ -17,4 +17,5 @@ public interface BjdCodeRepository extends JpaRepository<BjdCode, Long> {
     @Query("SELECT b.regionCode FROM BjdCode b WHERE b.sidoCode=:sidoCode")
     List<String> findAllBySidoCode(String sidoCode);
 
+    BjdCode findFirstByRegionCode(String regionCode);
 }
