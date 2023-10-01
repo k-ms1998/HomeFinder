@@ -58,4 +58,10 @@ public class ApartmentController {
         return ResponseEntity.ok(aptBasicInfo);
     }
 
+    @GetMapping("/compare")
+    public void compareApartments(@RequestParam List<String> id) {
+        apartmentService.compareApartments(id);
+
+    }
+
 }
