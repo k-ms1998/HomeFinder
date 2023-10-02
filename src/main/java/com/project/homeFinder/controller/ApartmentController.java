@@ -3,7 +3,6 @@ package com.project.homeFinder.controller;
 import com.project.homeFinder.batch.job.ApartmentInfoInsertJobConfig;
 import com.project.homeFinder.domain.Apartment;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
-import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlResponseRaw;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
 import com.project.homeFinder.service.ApartmentService;
 import lombok.RequiredArgsConstructor;
@@ -59,9 +58,10 @@ public class ApartmentController {
     }
 
     @GetMapping("/compare")
-    public void compareApartments(@RequestParam List<String> id) {
-        apartmentService.compareApartments(id);
+    public ResponseEntity<List<Apartment>> compareApartments(@RequestParam List<String> id) {
+        List<Apartment> result = apartmentService.compareApartments(id);
 
+        return ResponseEntity.ok(result);
     }
 
 }

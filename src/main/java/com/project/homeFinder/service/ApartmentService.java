@@ -1,5 +1,6 @@
 package com.project.homeFinder.service;
 
+import com.project.homeFinder.domain.Apartment;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListResponseRaw;
@@ -41,9 +42,9 @@ public class ApartmentService {
         return openDataApi.openDataAptBasicInfo(kaptCode).toItem();
     }
 
-    public void compareApartments(List<String> id) {
+    public List<Apartment> compareApartments(List<String> id) {
         if(id.size() <= 1){
-            return;
+            throw new RuntimeException("Please input at least two apartments to compare.");
         }
 
         List<Long> ids = new ArrayList<>();
@@ -55,7 +56,7 @@ public class ApartmentService {
             }
         }
 
-        apartmentRepository.fetchMultipleApartments(ids);
+        return apartmentRepository.fetchMultipleApartments(ids);
     }
 
 }
