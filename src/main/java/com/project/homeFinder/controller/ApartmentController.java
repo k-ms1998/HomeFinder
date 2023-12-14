@@ -1,11 +1,12 @@
 package com.project.homeFinder.controller;
 
 import com.project.homeFinder.batch.job.ApartmentInfoInsertJobConfig;
-import com.project.homeFinder.domain.Apartment;
+import com.project.homeFinder.dto.response.LangChainNaverNewsSummarizeResponse;
+import com.project.homeFinder.dto.response.raw.LangChainNaverNewsSummarizeResponseRaw;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlItem;
-import com.project.homeFinder.dto.response.raw.xml.ApartmentBasicInfoXmlResponseRaw;
 import com.project.homeFinder.dto.response.raw.xml.ApartmentListXmlItem;
 import com.project.homeFinder.service.ApartmentService;
+import com.project.homeFinder.service.LangChainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
@@ -31,6 +32,8 @@ import java.util.Map;
 public class ApartmentController {
 
     private final ApartmentService apartmentService;
+    private final LangChainService langChainService;
+
     private final JobLauncher jobLauncher;
     private final ApartmentInfoInsertJobConfig apartmentInfoInsertJobConfig;
 
@@ -58,4 +61,17 @@ public class ApartmentController {
         return ResponseEntity.ok(aptBasicInfo);
     }
 
+    @GetMapping("/summarize_latest_news/v1")
+    public ResponseEntity<LangChainNaverNewsSummarizeResponse> summarizeLatestNews(@RequestParam(defaultValue = "") Long aptId) {
+        try{
+            return ResponseEntity.ok(
+                    langChainService.langChain_SummarizeNaverNewsV1(aptId).toClientResponse()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.ok(
+                    LangChainNaverNewsSummarizeResponseRaw.createErrorResponse(e.getMessage()).toClientResponse()
+            );
+        }
+
+    }
 }
