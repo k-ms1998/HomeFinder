@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.project.homeFinder.repository.mapper.RegionNewsMapper">
+    <select id="findRegionNewsFromTodayFindOne" resultType="com.project.homeFinder.domain.RegionNews">
+        SELECT *FROM region_news AS r LEFT JOIN apartment AS a
+        ON r.region_code = a.dong
+        WHERE r.date = #{today} AND a.id = #{aptId}
+        LIMIT 1;
+    </select>
+</mapper>
