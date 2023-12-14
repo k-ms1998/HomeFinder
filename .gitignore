@@ -39,3 +39,9 @@ out/
 src/main/resources/env.txt
 
 src/test/resources/application.yml
+
+python_src/langchain/langchain_client_test.py
+
+python_src/.env
+
+python_src/langchain/langchain_server_test.py
