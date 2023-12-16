@@ -22,8 +22,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class BusStationService {
 
-    @Value("${myData.base.path.busstation}")
-    private String BASE_PATH;
+//    @Value("${myData.base.path.busstation}")
+    private String BASE_PATH = "TEST";
 
 
     private final BusStationRepository busStationRepository;

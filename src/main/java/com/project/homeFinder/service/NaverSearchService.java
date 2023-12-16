@@ -8,6 +8,7 @@ import com.project.homeFinder.repository.BjdCodeRepository;
 import com.project.homeFinder.service.api.NaverApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class NaverSearchService {
     private final ApartmentRepository apartmentRepository;
     private final BjdCodeRepository bjdCodeRepository;
 
+    @Transactional(readOnly = true)
     public List<NaverSearchNewsItem> naverSearchNewsByArea(Long aptId, int display, int start, String sort){
         if(aptId == null){
             throw new RuntimeException("Please input the apartment id.");
