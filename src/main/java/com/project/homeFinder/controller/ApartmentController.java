@@ -61,6 +61,7 @@ public class ApartmentController {
         return ResponseEntity.ok(aptBasicInfo);
     }
 
+
     @GetMapping("/summarize_latest_news/v1")
     public ResponseEntity<LangChainNaverNewsSummarizeResponse> summarizeLatestNews(@RequestParam(defaultValue = "") Long aptId) {
         try{
@@ -74,4 +75,12 @@ public class ApartmentController {
         }
 
     }
+
+    @GetMapping("/compare")
+    public ResponseEntity<List<Apartment>> compareApartments(@RequestParam List<String> id) {
+        List<Apartment> result = apartmentService.compareApartments(id);
+
+        return ResponseEntity.ok(result);
+    }
+
 }
